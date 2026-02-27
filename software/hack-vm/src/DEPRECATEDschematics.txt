@@ -1,0 +1,210 @@
+// General purpose registers (GPR) R13, R14, R15
+/* push (segment) (i)
+
+
+@i // get index
+D=A // hold index in D-register
+
+@segmentPointer // find where the segment starts
+A=D+M // set the address to the index + segment location
+D = M // store found value
+
+@SP
+A=M // go to where stack points
+M=D // set value to previously stored value
+
+@SP
+M = M+1 // increment stack pointer
+
+
+*/
+
+/* pop (segment) (i) [ moves top item of stack into segment at index i]
+
+
+@i
+D=A // store index in D-reg
+
+@segmentPointer
+D=M+D // store address of index i in segment in D-reg
+
+@GPR1
+M=D // store address of index i in segment in GPR
+
+@SP
+M=M-1 // decrement stack pointer
+A=M // go to where stack pointer points
+D=M // store top value of stack in D-reg
+
+@GPR1
+A=M // travel to index i of segment
+M=D // set value
+
+*/
+
+
+// note: push/pop static i == push pop Xxx.i
+// note: push/pop pointer 0 == push/pop THIS
+// note: push/pop pointer 1 == push/pop THAT
+// note: push/pop temp i == push/pop RAM[5+i]
+
+// arithmetic/logical: add, sub, neg, eq, gt, lt, and, or, not
+
+/* Add (adds top two elements from stack)
+
+@SP
+A=M-1 // travel to the last added element of stack
+D=M // store value
+A=M-1 // travel to second to last added element of stack
+M=D+M // add
+D=A+1 // set D-register to address right after top element
+
+@SP
+M=D
+
+*/
+
+/* Sub (stackSecondTop - stackTop)
+
+@SP
+A=M-1 // travel to the last added element of stack
+D=M // store value
+A=M-1 // travel to second to last added element of stack
+M=M-D // add
+D=A+1 // set D-register to address right after top element
+
+@SP
+M=D
+
+*/
+
+/* Neg
+
+@SP
+A=M-1
+M=-M
+
+*/
+
+/* Eq (true is implemented as -1)
+
+@SP
+A=M-1 // travel to the last added element of stack
+D=M // store value
+
+@SP
+A=M-1
+A=M-1 // travel to second to last item in stack
+D=D-M
+M=0 // set to 0
+
+@SP
+M=M-1
+
+@END_i
+D;JGT // jump to end if greater than
+
+@END_i
+D;JLE // jump to end if less than
+
+@SP
+A=M-1 // travel to top of stack
+M=-1 // set to true
+
+(END_i)
+
+
+*/
+
+/* GT
+
+@SP
+A=M-1 // travel to the last added element of stack
+D=M // store value
+
+@SP
+A=M-1
+A=M-1 // travel to second to last item in stack
+D=M-D
+M=-1
+
+@SP
+M=M-1
+
+@END_i
+D;JGT // jump to end if greater than
+
+@SP
+A=M
+M=0
+
+(END_i)
+*/
+
+/* LT
+
+@SP
+A=M-1 // travel to the last added element of stack
+D=M // store value
+
+@SP
+A=M-1
+A=M-1 // travel to second to last item in stack
+D=M-D
+M=-1
+
+@SP
+M=M-1
+
+@END_i
+D;JLT // jump to end if less than
+
+@SP
+A=M
+M=0
+
+(END_i)
+*/
+
+/* and
+
+// similar logic to add 
+
+@SP
+A=M-1 
+D=M
+A=M-1 
+M=D&M 
+D=A+1 
+
+@SP
+M=D
+
+
+*/
+
+
+/* or
+
+// similar logic to add 
+
+@SP
+A=M-1 
+D=M
+A=M-1 
+M=D|M 
+D=A+1 
+
+@SP
+M=D
+
+
+*/
+
+/* not (similar to neg)
+
+@SP
+A=M-1
+M=!M
+
+ */
