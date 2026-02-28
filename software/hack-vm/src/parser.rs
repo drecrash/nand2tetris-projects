@@ -7,7 +7,14 @@ pub struct Parser {
 pub enum COMMAND_TYPES {
     PUSH,
     POP,
-    ARITHMETIC
+    ARITHMETIC,
+
+    LABEL,
+    GOTO,
+    IF,
+    FUNCTION,
+    RETURN,
+    CALL
 }
 
 
@@ -15,10 +22,16 @@ impl Parser {
 
     // Get command type (arithmetic, push, pop)
     pub fn commandType(line: String) -> COMMAND_TYPES{
-        if (line.contains("push")){
+        if (line.contains("push")){ // push/pop command types
             return COMMAND_TYPES::PUSH;
         } else if (line.contains("pop")){
             return COMMAND_TYPES::POP;
+        } else if (line.contains("label")){ // branching commands
+            return COMMAND_TYPES::LABEL;
+        } else if (line.contains("goto")){
+            return COMMAND_TYPES::GOTO;
+        } else if (line.contains("if-goto")){
+            return COMMAND_TYPES::IF
         } else { // to-do: account for improper syntax
             return COMMAND_TYPES::ARITHMETIC;
         }
@@ -27,6 +40,7 @@ impl Parser {
     /* get first argument
 
     If ARITHMETIC type, returns command
+    If branch related command, returns label
     Otherwise returns segment (local, static, etc.)
 
     */

@@ -441,4 +441,51 @@ impl Codewriter{
 
     }
 
+
+    pub fn writeBranch(&self, line: String){
+
+        
+        let command_type = Parser::commandType(line.clone());
+        let mut output: String = String::new();
+
+        let mut label = Parser::arg1(&line);
+
+        match (command_type){
+            COMMAND_TYPES::GOTO => {
+
+
+                output = format!("
+                @{}
+                0;JMP
+                ", label)
+
+            },
+            COMMAND_TYPES::LABEL => {
+                output = format!("
+                ({})
+                ", label)
+            },
+            COMMAND_TYPES::IF =>{
+                output = format!("
+                @SP
+                A=M-1
+                D=M // get top element of stack, hopefully the result of a boolean operation
+
+                @{}
+                D;JLT // true is implemented as -1
+
+                ", label)
+            }
+            _=>{panic!("Something has gone awry")}
+        }
+
+
+
+        let mut output_file = OpenOptions::new().read(true).append(true).open(&self.output_file)
+            .expect("err");
+
+        output_file.write_all(output.as_bytes());
+        
+    }
+
 }

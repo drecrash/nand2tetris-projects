@@ -38,7 +38,8 @@ fn main() {
             },
             parser::COMMAND_TYPES::PUSH =>{
                  codewriter.writePushPop(line.to_string());
-            }
+            },
+            _=>{panic!("Something has gone awry")} // Other command types are yet to be implemented
         }
 
     }
