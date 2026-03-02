@@ -4,6 +4,7 @@ pub struct Parser {
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum COMMAND_TYPES {
     PUSH,
     POP,

@@ -1,58 +1,116 @@
 
-@256 // initialize stack pointer
-D=A
-@0
-M=D
+        @256 // initialize stack pointer
+        D=A
+        @0
+        M=D
+        
+                        
+                        @0 // get index
+                        D=A // hold index in D-register
 
-@300 // initialize local pointer
-D=A
-@1
-M=D
+                        @2 // find where the segment starts
+                        A=D+M // set the address to the index + segment location
+                        D = M // store found value
 
-@400 // initialize argument pointer
-D=A
-@2
-M=D
+                        @SP
+                        A=M // go to where stack points
+                        M=D // set value to previously stored value
 
-@3000 // initialize this pointer
-D=A
-@3
-M=D
+                        @SP
+                        M = M+1 // increment stack pointer
 
-@3010 // initialize that pointer
-D=A
-@4
-M=D
+                        
+                    
+                        @2 
+                        D=A
 
+                        @SP
+                        A=M
+                        M=D
 
-@7 
-D=A
+                        @SP
+                        M=M+1
 
-@SP
-A=M
-M=D
-
-@SP
-M=M+1
-
-@8 
-D=A
-
-@SP
-A=M
-M=D
-
-@SP
-M=M+1
-
-@SP
-M=M-1 // decrement stack pointer
-A=M 
-D=M // save top element of stack
-
-@SP
-A=M-1 // go to new top element of stack
-M=D+M // add
-
-
+                        
+                @N_LT_2
+                0;JMP
                 
+                @N_GE_2
+                0;JMP
+                
+                (N_LT_2)
+                
+                        
+                        @0 // get index
+                        D=A // hold index in D-register
+
+                        @2 // find where the segment starts
+                        A=D+M // set the address to the index + segment location
+                        D = M // store found value
+
+                        @SP
+                        A=M // go to where stack points
+                        M=D // set value to previously stored value
+
+                        @SP
+                        M = M+1 // increment stack pointer
+
+                        
+                (N_GE_2)
+                
+                        
+                        @0 // get index
+                        D=A // hold index in D-register
+
+                        @2 // find where the segment starts
+                        A=D+M // set the address to the index + segment location
+                        D = M // store found value
+
+                        @SP
+                        A=M // go to where stack points
+                        M=D // set value to previously stored value
+
+                        @SP
+                        M = M+1 // increment stack pointer
+
+                        
+                    
+                        @2 
+                        D=A
+
+                        @SP
+                        A=M
+                        M=D
+
+                        @SP
+                        M=M+1
+
+                        
+                        
+                        @0 // get index
+                        D=A // hold index in D-register
+
+                        @2 // find where the segment starts
+                        A=D+M // set the address to the index + segment location
+                        D = M // store found value
+
+                        @SP
+                        A=M // go to where stack points
+                        M=D // set value to previously stored value
+
+                        @SP
+                        M = M+1 // increment stack pointer
+
+                        
+                    
+                        @1 
+                        D=A
+
+                        @SP
+                        A=M
+                        M=D
+
+                        @SP
+                        M=M+1
+
+                        

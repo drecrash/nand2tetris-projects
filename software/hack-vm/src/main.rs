@@ -40,7 +40,28 @@ fn main() {
             parser::COMMAND_TYPES::PUSH =>{
                  codewriter.writePushPop(line.to_string());
             },
-            _=>{panic!("Something has gone awry")} // Other command types are yet to be implemented
+            parser::COMMAND_TYPES::CALL =>{
+                codewriter.writeCall(line.to_string());
+            },
+            parser::COMMAND_TYPES::FUNCTION =>{
+                codewriter.writeFunction(line.to_string());
+            },
+            parser::COMMAND_TYPES::RETURN =>{
+                codewriter.writeReturn(line.to_string());
+            },
+            parser::COMMAND_TYPES::GOTO =>{
+                codewriter.writeBranch(line.to_string());
+            },
+            parser::COMMAND_TYPES::LABEL=>{
+                codewriter.writeBranch(line.to_string());
+            },
+            parser::COMMAND_TYPES::IF =>{
+                codewriter.writeBranch(line.to_string());
+            },       
+            _=>{ // Other command types are yet to be implemented
+                print!("{:?}", Parser::commandType(line.to_string()));
+                panic!("Something has gone awry")
+            }
         }
 
     }

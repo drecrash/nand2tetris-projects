@@ -46,30 +46,12 @@ impl Codewriter{
         D=A
         @0
         M=D
-
-        @300 // initialize local pointer
-        D=A
-        @1
-        M=D
-
-        @400 // initialize argument pointer
-        D=A
-        @2
-        M=D
-
-        @3000 // initialize this pointer
-        D=A
-        @3
-        M=D
-
-        @3010 // initialize that pointer
-        D=A
-        @4
-        M=D
         ";
 
 
         self.writeToOutput(initial_statement);
+
+        self.writeCall("call Sys.init".to_string());
 
     }
 
@@ -500,7 +482,7 @@ impl Codewriter{
     }
 
 
-    fn writeCall(&self, line: String){
+    pub fn writeCall(&self, line: String){
         let command_type = Parser::commandType(line.clone());
 
         let mut reposition_pointers_output: String = String::new();
@@ -640,7 +622,7 @@ impl Codewriter{
     }
 
 
-    fn writeReturn(&self, line: String){
+    pub fn writeReturn(&self, line: String){
 
         let command_type = Parser::commandType(line);
         let mut output: String = String::new();
@@ -754,7 +736,7 @@ impl Codewriter{
     }
 
 
-    fn writeFunction(&self, line: String){
+    pub fn writeFunction(&self, line: String){
         let command_type = Parser::commandType(line.clone());
         let mut output: String = String::new();
 
