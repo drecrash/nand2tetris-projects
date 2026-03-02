@@ -41,6 +41,8 @@ impl Parser {
 
     If ARITHMETIC type, returns command
     If branch related command, returns label
+    If 'call', returns functionName
+    If 'function', returns functionName
     Otherwise returns segment (local, static, etc.)
 
     */
@@ -64,6 +66,9 @@ impl Parser {
 
     }
 
+    // If push/pop: returns index to access within segment
+    // If 'call': returns nArgs
+    // If 'function': returns nLcl
     pub fn arg2(line: &String) -> &str{
         let command_parts:Vec<&str> = line.split(" ").collect();
 

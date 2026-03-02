@@ -23,7 +23,8 @@ fn main() {
 
     let mut codewriter = Codewriter {
         output_file: output_file.to_string(),
-        end_count: 0
+        end_count: 0,
+        call_count: 0
     };
 
     codewriter.createOutputFile();
