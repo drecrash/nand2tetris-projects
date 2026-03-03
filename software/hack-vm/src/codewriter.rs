@@ -9,7 +9,8 @@ pub struct Codewriter{
     pub output_file: String,
     pub end_count: i32, // count of end labels, incremented when new end label is added
     pub call_count: i32, // count of how many times functions are called, used to instantiate return labels, incremented on each call
-    pub toggle_bootstrap: bool // if testing a single file, don't use the bootstrap code
+    pub toggle_bootstrap: bool, // if testing a single file, don't use the bootstrap code
+    pub input_file: String // current file being read
 }
 
 
