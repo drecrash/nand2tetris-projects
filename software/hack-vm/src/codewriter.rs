@@ -16,13 +16,29 @@ pub struct Codewriter{
 impl Codewriter{
 
 
+    fn trimOutput(&self, mut contents: &str) -> String{
+        let all_lines: Vec<&str> = contents.lines().collect();
+        let mut updated_contents: Vec<&str> = Vec::new();
 
-    pub fn writeToOutput(&self, output: &str){
+        for mut line in all_lines{ // remove comments
+            line = line.trim();
+            updated_contents.push(line);
+        }
+
+
+        let mut fin_contents: String = updated_contents.join("\n");
+
+        return fin_contents
+    }
+
+    pub fn writeToOutput(&self, mut output: &str){
         println!("Writing: {output}");
         let mut output_file = OpenOptions::new().read(true).append(true).open(&self.output_file)
             .expect("err");
 
-        output_file.write_all(output.as_bytes());
+        let written_output = self.trimOutput(output);
+
+        output_file.write_all(&written_output.as_bytes());
     }
 
     pub fn buildSegmentMap(&self) -> HashMap<&str, i32>{
@@ -98,7 +114,7 @@ impl Codewriter{
                 
                 @SP
                 A=M-1 // travel to second to last added element of stack
-                M=M-D // add
+                M=M-D // sub
 
                 ".to_string();
                 

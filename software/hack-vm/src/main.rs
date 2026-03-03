@@ -9,7 +9,7 @@ use std::fs;
 
 fn main() {
 
-    let file_path = "test.txt";
+    let file_path = "input.vm";
     println!("{}", std::env::current_dir().unwrap().display());
 
     let mut file_contents = fs::read_to_string(file_path)
