@@ -8,7 +8,8 @@ use crate::parser::{self, *};
 pub struct Codewriter{
     pub output_file: String,
     pub end_count: i32, // count of end labels, incremented when new end label is added
-    pub call_count: i32 // count of how many times functions are called, used to instantiate return labels, incremented on each call
+    pub call_count: i32, // count of how many times functions are called, used to instantiate return labels, incremented on each call
+    pub toggle_bootstrap: bool // if testing a single file, don't use the bootstrap code
 }
 
 
@@ -17,6 +18,7 @@ impl Codewriter{
 
 
     pub fn writeToOutput(&self, output: &str){
+        println!("Writing: {output}");
         let mut output_file = OpenOptions::new().read(true).append(true).open(&self.output_file)
             .expect("err");
 
@@ -48,10 +50,14 @@ impl Codewriter{
         M=D
         ";
 
+        if (self.toggle_bootstrap){
+        
+            self.writeToOutput(initial_statement);
 
-        self.writeToOutput(initial_statement);
+            self.writeCall("call Sys.init 0".to_string());
+            
 
-        self.writeCall("call Sys.init".to_string());
+        }
 
     }
 
@@ -61,8 +67,12 @@ impl Codewriter{
         let mut output: String = "".to_string();
         let operator = Parser::arg1(&line);
 
+        
+        self.writeToOutput(&format!("// Handling {line}\n"));
+
         match (operator){
             "add"=>{
+
                 output = "
                 @SP
                 M=M-1 // decrement stack pointer
@@ -218,6 +228,7 @@ impl Codewriter{
 
 
             _=>{
+                println!("OUTPUT FAIL: {operator}");
                 output="".to_string();
             }
         }
@@ -232,6 +243,8 @@ impl Codewriter{
 
 
     pub fn writePushPop(&self, line: String){
+
+        self.writeToOutput(&format!("// Handling {line}\n"));
 
         // need hashmap for segments and corresponding pointers
         let mut segmentMap = self.buildSegmentMap();
@@ -440,6 +453,8 @@ impl Codewriter{
 
     pub fn writeBranch(&self, line: String){
 
+        self.writeToOutput(&format!("// Handling {line}\n"));
+
         
         let command_type = Parser::commandType(line.clone());
         let mut output: String = String::new();
@@ -467,8 +482,11 @@ impl Codewriter{
                 A=M-1
                 D=M // get top element of stack, hopefully the result of a boolean operation
 
+                @SP
+                M=M-1 // decrement the pointer
+
                 @{}
-                D;JLT // true is implemented as -1
+                D;JNE // false is implemented as 0
 
                 ", label)
             }
@@ -483,12 +501,16 @@ impl Codewriter{
 
 
     pub fn writeCall(&self, line: String){
+
+        self.writeToOutput(&format!("// Handling {line}\n"));
+
         let command_type = Parser::commandType(line.clone());
 
         let mut reposition_pointers_output: String = String::new();
         let mut save_state_output: String = String::new();
 
         let n_args = Parser::arg2(&line);
+        
         let function_name = Parser::arg1(&line);
 
         let segment_map = self.buildSegmentMap();
@@ -513,222 +535,220 @@ impl Codewriter{
         // reposition 'arg'
         // reposition LCL
 
-        if (command_type == COMMAND_TYPES::CALL){
+
+        // save the current state (stack pointer, local pointer, arg pointer, this, that)
+        // TODO: make the label follow convention
+        save_state_output += &format!("
+        @CALL_{} // generate a label and save it
+        D=A
+
+        @SP // push current address onto the stack
+        A=M
+        M=D
+        
+        @SP // increment stack pointer
+        M=M+1
+        ", self.call_count); 
+
+        self.writeToOutput(&save_state_output);
+
+        save_state_output = "".to_string();
+
+        // TODO: consolidate the following four statements
+        save_state_output += &format!("
+        @{}
+        D=M
+
+        @SP
+        A=M
+        M=D
+
+        @SP
+        M=M+1
+        ", lcl_pointer);
 
 
-            // save the current state (stack pointer, local pointer, arg pointer, this, that)
-            // TODO: make the label follow convention
-            save_state_output += &format!("
-            @CALL_{} // generate a label and save it
-            D=A
+        save_state_output += &format!("
+        @{}
+        D=M
 
-            @SP // push current address onto the stack
-            A=M
-            M=D
-            
-            @SP // increment stack pointer
-            M=M+1
-            ", self.call_count); 
+        @SP
+        A=M
+        M=D
 
-            self.writeToOutput(&save_state_output);
-
-            save_state_output = "".to_string();
-
-            // TODO: consolidate the following four statements
-            save_state_output += &format!("
-            @{}
-            D=M
-
-            @SP
-            A=M
-            M=D
-
-            @SP
-            M=M+1
-            ", lcl_pointer);
+        @SP
+        M=M+1
+        ", arg_pointer);
 
 
-            save_state_output += &format!("
-            @{}
-            D=M
+        save_state_output += &format!("
+        @{}
+        D=M
 
-            @SP
-            A=M
-            M=D
+        @SP
+        A=M
+        M=D
 
-            @SP
-            M=M+1
-            ", arg_pointer);
-
-
-            save_state_output += &format!("
-            @{}
-            D=M
-
-            @SP
-            A=M
-            M=D
-
-            @SP
-            M=M+1
-            ", this_pointer);
+        @SP
+        M=M+1
+        ", this_pointer);
 
 
-            save_state_output += &format!("
-            @{}
-            D=M
+        save_state_output += &format!("
+        @{}
+        D=M
 
-            @SP
-            A=M
-            M=D
+        @SP
+        A=M
+        M=D
 
-            @SP
-            M=M+1
-            ", that_pointer);
+        @SP
+        M=M+1
+        ", that_pointer);
 
-            self.writeToOutput(&save_state_output);
-
-
-
-            // reposition the pointers
-            reposition_pointers_output += &format!("
-            // set ARG = SP - 5 - nArgs
-            @SP
-            D=M
-            @5
-            D=D-A
-            @{} // nArgs
-            D=D-A
-            @ARG // arg segment pointer
-            M=D
-            ", n_args);
+        self.writeToOutput(&save_state_output);
 
 
 
-            reposition_pointers_output += &format!("
-            // set LCL = SP
-            @SP
-            D=M
-            @{} // lcl segment pointer
-            M=D
-            ", lcl_pointer);
+        // reposition the pointers
+        println!("n_args: {line}");
+        reposition_pointers_output += &format!("
+        // set ARG = SP - 5 - nArgs
+        @SP
+        D=M
+        @5
+        D=D-A
+        @{} // nArgs
+        D=D-A
+        @ARG // arg segment pointer
+        M=D
+        ", n_args.parse::<i32>().unwrap());
 
-            self.writeToOutput(&reposition_pointers_output);
 
-            self.writeBranch(format!("goto {}", function_name));
 
-            self.writeToOutput(&format!("(CALL_{})", self.call_count));
-        }
+        reposition_pointers_output += &format!("
+        // set LCL = SP
+        @SP
+        D=M
+        @{} // lcl segment pointer
+        M=D
+        ", lcl_pointer);
+
+        self.writeToOutput(&reposition_pointers_output);
+
+        self.writeBranch(format!("goto {}", function_name));
+
+        self.writeToOutput(&format!("(CALL_{})", self.call_count));
     }
 
 
+
     pub fn writeReturn(&self, line: String){
+        self.writeToOutput(&format!("// Handling {line}\n"));
 
         let command_type = Parser::commandType(line);
         let mut output: String = String::new();
 
-        if (command_type == COMMAND_TYPES::RETURN){
-            // at argument pointer, replace with value returned by callee
-            // value returned by callee is located just above stack pointer
 
-            output += "
+        // at argument pointer, replace with value returned by callee
+        // value returned by callee is located just above stack pointer
 
-            @LCL
-            D=M-1 
+        output += "
 
-            @ENDFRAME // store the endframe location
-            M=D
+        @LCL
+        D=M-1 
 
-            ";
+        @ENDFRAME // store the endframe location
+        M=D
 
-
-            
-            // save return address
-
-            output += "
-            @LCL
-            D=M-1 // segment pointers are stored one ram address above local
-
-            D=D-1
-            D=D-1
-            D=D-1
-            D=D-1 // go back 5 in order to get the return address
-
-            A=D
-            D=M // D is now the return address
-
-            @RETURN_ADDR
-            M=D
-
-            ";
+        ";
 
 
-            output += "
-            @SP
-            A=M-1
-            D=M // save returned value
+        
+        // save return address
 
-            @ARG
-            A=M
-            M=D // place returned value whereever ARG points
-            ";
+        output += "
+        @LCL
+        D=M-1 // segment pointers are stored one ram address above local
 
-            output += "
-            @ARG
-            A=M+1
-            D=A
+        D=D-1
+        D=D-1
+        D=D-1
+        D=D-1 // go back 5 in order to get the return address
 
-            @SP // set stack pointer to right below argument; recycle allocated memory
-            M=D
-            ";
+        A=D
+        D=M // D is now the return address
 
-            // restore segment pointers
-            output += "
+        @RETURN_ADDR
+        M=D
+
+        ";
 
 
-            @ENDFRAME
-            A=M // go to the endframe and store the top value
-            D=M
+        output += "
+        @SP
+        A=M-1
+        D=M // save returned value
 
-            @THAT
-            M=D
+        @ARG
+        A=M
+        M=D // place returned value whereever ARG points
+        ";
 
-            @ENDFRAME // repeat for this, arg, and local
-            M=M-1
-            A=M
-            D=M
+        output += "
+        @ARG
+        A=M+1
+        D=A
 
-            @THIS
-            M=D
+        @SP // set stack pointer to right below argument; recycle allocated memory
+        M=D
+        ";
 
-            @ENDFRAME
-            M=M-1
-            A=M
-            D=M 
-
-            @ARG
-            M=D
+        // restore segment pointers
+        output += "
 
 
-            @ENDFRAME
-            M=M-1
-            A=M
-            D=M 
+        @ENDFRAME
+        A=M // go to the endframe and store the top value
+        D=M
 
-            @LCL
-            M=D
+        @THAT
+        M=D
 
-            ";
+        @ENDFRAME // repeat for this, arg, and local
+        M=M-1
+        A=M
+        D=M
 
-            output += "
-            @RETURN_ADDR
-            A=M
-            0;JMP
-            ";
+        @THIS
+        M=D
 
-            self.writeToOutput(&output);
+        @ENDFRAME
+        M=M-1
+        A=M
+        D=M 
 
-        }
+        @ARG
+        M=D
+
+
+        @ENDFRAME
+        M=M-1
+        A=M
+        D=M 
+
+        @LCL
+        M=D
+
+        ";
+
+        output += "
+        @RETURN_ADDR
+        A=M
+        0;JMP
+        ";
+
+        self.writeToOutput(&output);
 
         
 
@@ -737,14 +757,15 @@ impl Codewriter{
 
 
     pub fn writeFunction(&self, line: String){
-        let command_type = Parser::commandType(line.clone());
+        self.writeToOutput(&format!("// Handling {line}\n"));
+
         let mut output: String = String::new();
 
         let function_name = Parser::arg1(&line);
 
         let n_lcl = (Parser::arg2(&line)).parse::<i32>().unwrap();
 
-        if (command_type == COMMAND_TYPES::FUNCTION){
+
 
             self.writeToOutput(&format!("({})\n", function_name));
             
@@ -754,6 +775,6 @@ impl Codewriter{
             }
 
 
-        }
+        
     }
 }

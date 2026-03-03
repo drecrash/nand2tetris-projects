@@ -29,11 +29,14 @@ impl Parser {
             return COMMAND_TYPES::POP;
         } else if (line.contains("label")){ // branching commands
             return COMMAND_TYPES::LABEL;
-        } else if (line.contains("goto")){
-            return COMMAND_TYPES::GOTO;
         } else if (line.contains("if-goto")){
             return COMMAND_TYPES::IF
-        } else { // to-do: account for improper syntax
+        } else if (line.contains("goto")){
+            return COMMAND_TYPES::GOTO;
+        } else if (line.contains("call")){
+            return COMMAND_TYPES::CALL
+        }
+        else { // to-do: account for improper syntax
             return COMMAND_TYPES::ARITHMETIC;
         }
     }
@@ -63,7 +66,7 @@ impl Parser {
         let arg1 = command_parts.get(index)
             .expect("error getting arg1");
 
-        arg1
+        arg1.trim()
 
     }
 
@@ -73,6 +76,7 @@ impl Parser {
     pub fn arg2(line: &String) -> &str{
         let command_parts:Vec<&str> = line.split(" ").collect();
 
+
         if (Self::commandType(line.clone()) == COMMAND_TYPES::ARITHMETIC){ // if arithmetic, no arg2
             return "String::new();"
         }
@@ -80,7 +84,9 @@ impl Parser {
         let arg2 = command_parts.get(2)
             .expect("error getting arg2");
 
-        arg2       
+
+
+        arg2.trim()       
     }
 
 }
