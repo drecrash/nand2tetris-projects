@@ -46,6 +46,7 @@ impl Codewriter{
         let mut segmentMap: HashMap<&str, i32> = HashMap::new();
 
         segmentMap.insert("constant", 256); // this is just a placeholder, it should never be accessed
+        segmentMap.insert("static", 100); // this is just a placeholder, it should never be accessed
         segmentMap.insert("local", 1); // by default, LCL is set to RAM[1]
         segmentMap.insert("argument", 2); // default is RAM[2]
         segmentMap.insert("temp", 5);
@@ -283,6 +284,7 @@ impl Codewriter{
                 item = "-1";
             }
         }
+        println!("seg: {segment}");
         let segment_pointer = segmentMap.get(segment)
             .expect("Error retrieving segment pointer");
 
@@ -666,19 +668,20 @@ impl Codewriter{
     pub fn writeReturn(&self, line: String){
         self.writeToOutput(&format!("// Handling {line}\n"));
 
-        let command_type = Parser::commandType(line);
         let mut output: String = String::new();
+        /* STEPS
+        - Store location of endframe (wherever local points)
+        - Store return address (stored 5 addresses above ENDFRAME)
+        - Save value returned by function (the top of the current stack)
+        - Replace function arguments in RAM with the value returned by function
+        - Recycle memory allocated to function by setting stack pointer right below argument
 
-
-        // at argument pointer, replace with value returned by callee
-        // value returned by callee is located just above stack pointer
-
-
-        // NOTE TO SELF: return address and endframe need to be saved BEFORE making modifications to pointers
-        // Segment pointers need to be restored before SP and ARG are altered
+        - Restore caller's segment pointers
         
-
-        // BUGFIX 3/3/26: changed endframe to be = LCL rather than LCL - 1, and use ENDFRAME instead of LCL throughout
+        - Jump to return address
+        
+         */
+        
         output += "
 
         @LCL
@@ -710,11 +713,32 @@ impl Codewriter{
 
         ";
 
+
+        output += "
+        @SP
+        A=M-1
+        D=M // save returned value
+
+        @ARG
+        A=M
+        M=D // place returned value whereever ARG points
+        ";
+
+        output += "
+        @ARG
+        A=M+1
+        D=A
+
+        @SP // set stack pointer to right below argument; recycle allocated memory
+        M=D
+        ";
+
         // restore segment pointers
         output += "
 
 
         @ENDFRAME
+        M=M-1
         A=M // go to the endframe and store the top value
         D=M
 
@@ -749,24 +773,6 @@ impl Codewriter{
         ";
 
 
-        output += "
-        @SP
-        A=M-1
-        D=M // save returned value
-
-        @ARG
-        A=M
-        M=D // place returned value whereever ARG points
-        ";
-
-        output += "
-        @ARG
-        A=M+1
-        D=A
-
-        @SP // set stack pointer to right below argument; recycle allocated memory
-        M=D
-        ";
 
         output += "
         @RETURN_ADDR

@@ -23,10 +23,10 @@ fn get_files_in_dir(directory: &str)  -> io::Result<Vec<String>> {
 }
 fn main() {
 
-    let directory = "FibonacciElement";
+    let directory = "Personal";
     let all_files = get_files_in_dir(directory).unwrap();
 
-    let output_file = "output.asm";
+    let output_file = &format!("{}.asm", directory);
 
     let mut codewriter = Codewriter {
         output_file: output_file.to_string(),

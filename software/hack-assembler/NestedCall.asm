@@ -648,9 +648,25 @@ D=M // D is now the return address
 M=D
 
 
+@SP
+A=M-1
+D=M // save returned value
+
+@ARG
+A=M
+M=D // place returned value whereever ARG points
+
+@ARG
+A=M+1
+D=A
+
+@SP // set stack pointer to right below argument; recycle allocated memory
+M=D
+
 
 
 @ENDFRAME
+M=M-1
 A=M // go to the endframe and store the top value
 D=M
 
@@ -682,21 +698,6 @@ D=M
 @LCL
 M=D
 
-
-@SP
-A=M-1
-D=M // save returned value
-
-@ARG
-A=M
-M=D // place returned value whereever ARG points
-
-@ARG
-A=M+1
-D=A
-
-@SP // set stack pointer to right below argument; recycle allocated memory
-M=D
 
 @RETURN_ADDR
 A=M
@@ -810,9 +811,25 @@ D=M // D is now the return address
 M=D
 
 
+@SP
+A=M-1
+D=M // save returned value
+
+@ARG
+A=M
+M=D // place returned value whereever ARG points
+
+@ARG
+A=M+1
+D=A
+
+@SP // set stack pointer to right below argument; recycle allocated memory
+M=D
+
 
 
 @ENDFRAME
+M=M-1
 A=M // go to the endframe and store the top value
 D=M
 
@@ -844,21 +861,6 @@ D=M
 @LCL
 M=D
 
-
-@SP
-A=M-1
-D=M // save returned value
-
-@ARG
-A=M
-M=D // place returned value whereever ARG points
-
-@ARG
-A=M+1
-D=A
-
-@SP // set stack pointer to right below argument; recycle allocated memory
-M=D
 
 @RETURN_ADDR
 A=M

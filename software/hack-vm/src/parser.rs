@@ -57,7 +57,8 @@ impl Parser {
     pub fn arg1(line: &String) -> &str{
 
 
-        let command_parts:Vec<&str> = line.split(" ").collect();
+        let command_parts:Vec<&str> = line.trim().split(" ").collect();
+
 
         let mut index = 1; // if push/pop, structure is [push/pop] [arg1] [arg2]
 
@@ -65,7 +66,7 @@ impl Parser {
             index = 0;
         }
 
-        println!("{line}");
+        
         
         let arg1 = command_parts.get(index)
             .expect("error getting arg1");
@@ -78,7 +79,7 @@ impl Parser {
     // If 'call': returns nArgs
     // If 'function': returns nLcl
     pub fn arg2(line: &String) -> &str{
-        let command_parts:Vec<&str> = line.split(" ").collect();
+        let command_parts:Vec<&str> = line.trim().split(" ").collect();
 
 
         if (Self::commandType(line.clone()) == COMMAND_TYPES::ARITHMETIC){ // if arithmetic, no arg2

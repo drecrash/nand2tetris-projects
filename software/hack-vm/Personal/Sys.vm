@@ -1,0 +1,6 @@
+function Sys.init 0
+	call Main.main 0
+    pop static 0
+
+label END  
+	goto END  // loops infinitely

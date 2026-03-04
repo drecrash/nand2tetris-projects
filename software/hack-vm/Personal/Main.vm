@@ -1,0 +1,4 @@
+function Main.main 0
+    push constant 7
+    push constant 10
+    add

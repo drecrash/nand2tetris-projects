@@ -6,7 +6,7 @@ mod parser;
 use crate::parser::*;
 fn main() {
 
-    let file_path = "Fill.asm"; // assembly file to parse
+    let file_path = "Personal.asm"; // assembly file to parse
 
     let mut file_contents = fs::read_to_string(file_path)
         .expect("File error");
