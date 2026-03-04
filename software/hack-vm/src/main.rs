@@ -23,7 +23,7 @@ fn get_files_in_dir(directory: &str)  -> io::Result<Vec<String>> {
 }
 fn main() {
 
-    let directory = "input_dir";
+    let directory = "FibonacciElement";
     let all_files = get_files_in_dir(directory).unwrap();
 
     let output_file = "output.asm";
@@ -32,7 +32,7 @@ fn main() {
         output_file: output_file.to_string(),
         end_count: 0,
         call_count: 0,
-        toggle_bootstrap: false,
+        toggle_bootstrap: true,
         input_file: all_files[0].clone()
     };
 
@@ -41,9 +41,14 @@ fn main() {
 
     for file_path in all_files{
 
-        codewriter.input_file = file_path.clone();
+        if (!file_path.contains(".vm")){
+            continue;
+        }
 
-        let mut file_contents = fs::read_to_string(file_path)
+        codewriter.input_file = file_path.clone();
+        println!("{file_path}");
+
+        let mut file_contents = fs::read_to_string(format!("{}/{}",directory,file_path))
             .expect("File read error");
 
         file_contents = clean_file(file_contents);

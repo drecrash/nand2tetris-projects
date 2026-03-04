@@ -35,6 +35,10 @@ impl Parser {
             return COMMAND_TYPES::GOTO;
         } else if (line.contains("call")){
             return COMMAND_TYPES::CALL
+        } else if (line.contains("function")){
+            return COMMAND_TYPES::FUNCTION
+        } else if (line.contains("return")){
+            return COMMAND_TYPES::RETURN
         }
         else { // to-do: account for improper syntax
             return COMMAND_TYPES::ARITHMETIC;

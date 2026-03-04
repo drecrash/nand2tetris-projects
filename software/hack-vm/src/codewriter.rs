@@ -369,7 +369,7 @@ impl Codewriter{
             }
 
             "static" =>{
-                let label = format!("{}.{}",self.output_file,item);
+                let label = format!("{}.{}",self.input_file,item);
                 match (command_type){
                     COMMAND_TYPES::PUSH => {
                         output = format!("
@@ -476,7 +476,8 @@ impl Codewriter{
         let command_type = Parser::commandType(line.clone());
         let mut output: String = String::new();
 
-        let mut label = Parser::arg1(&line);
+        //let label = &format!("{}{}", self.input_file, Parser::arg1(&line));
+        let label = Parser::arg1(&line);
 
         match (command_type){
             COMMAND_TYPES::GOTO => {
@@ -517,7 +518,7 @@ impl Codewriter{
     }
 
 
-    pub fn writeCall(&self, line: String){
+    pub fn writeCall(&mut self, line: String){
 
         self.writeToOutput(&format!("// Handling {line}\n"));
 
@@ -656,6 +657,8 @@ impl Codewriter{
         self.writeBranch(format!("goto {}", function_name));
 
         self.writeToOutput(&format!("(CALL_{})", self.call_count));
+
+        self.call_count = self.call_count + 1;
     }
 
 
@@ -670,10 +673,16 @@ impl Codewriter{
         // at argument pointer, replace with value returned by callee
         // value returned by callee is located just above stack pointer
 
+
+        // NOTE TO SELF: return address and endframe need to be saved BEFORE making modifications to pointers
+        // Segment pointers need to be restored before SP and ARG are altered
+        
+
+        // BUGFIX 3/3/26: changed endframe to be = LCL rather than LCL - 1, and use ENDFRAME instead of LCL throughout
         output += "
 
         @LCL
-        D=M-1 
+        D=M
 
         @ENDFRAME // store the endframe location
         M=D
@@ -685,7 +694,7 @@ impl Codewriter{
         // save return address
 
         output += "
-        @LCL
+        @ENDFRAME
         D=M-1 // segment pointers are stored one ram address above local
 
         D=D-1
@@ -699,26 +708,6 @@ impl Codewriter{
         @RETURN_ADDR
         M=D
 
-        ";
-
-
-        output += "
-        @SP
-        A=M-1
-        D=M // save returned value
-
-        @ARG
-        A=M
-        M=D // place returned value whereever ARG points
-        ";
-
-        output += "
-        @ARG
-        A=M+1
-        D=A
-
-        @SP // set stack pointer to right below argument; recycle allocated memory
-        M=D
         ";
 
         // restore segment pointers
@@ -759,6 +748,26 @@ impl Codewriter{
 
         ";
 
+
+        output += "
+        @SP
+        A=M-1
+        D=M // save returned value
+
+        @ARG
+        A=M
+        M=D // place returned value whereever ARG points
+        ";
+
+        output += "
+        @ARG
+        A=M+1
+        D=A
+
+        @SP // set stack pointer to right below argument; recycle allocated memory
+        M=D
+        ";
+
         output += "
         @RETURN_ADDR
         A=M
@@ -774,20 +783,21 @@ impl Codewriter{
 
 
     pub fn writeFunction(&self, line: String){
-        self.writeToOutput(&format!("// Handling {line}\n"));
+        self.writeToOutput(&format!("// Handling {line}\n\n"));
 
         let mut output: String = String::new();
 
         let function_name = Parser::arg1(&line);
+        println!("FUNCTION NAME: {function_name}");
 
         let n_lcl = (Parser::arg2(&line)).parse::<i32>().unwrap();
 
 
 
-            self.writeToOutput(&format!("({})\n", function_name));
+            self.writeToOutput(&format!("({})\n\n", function_name));
             
             for n in 0..n_lcl{
-                self.writePushPop("push constant 0".to_string());
+                self.writePushPop("push constant 0\n".to_string());
 
             }
 
