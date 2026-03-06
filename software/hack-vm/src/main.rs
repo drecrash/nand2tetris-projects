@@ -23,7 +23,14 @@ fn get_files_in_dir(directory: &str)  -> io::Result<Vec<String>> {
 }
 fn main() {
 
-    let directory = "Personal";
+    let mut user_input = String::new();
+
+    io::stdin().read_line(&mut user_input)
+        .expect("failed get user input");
+
+    println!("{user_input}");
+
+    let directory = user_input.as_str().trim();
     let all_files = get_files_in_dir(directory).unwrap();
 
     let output_file = &format!("{}.asm", directory);

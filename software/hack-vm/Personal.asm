@@ -14,7 +14,7 @@ M=D
 @SP // increment stack pointer
 M=M+1
 
-@1
+@LCL
 D=M
 
 @SP
@@ -24,7 +24,7 @@ M=D
 @SP
 M=M+1
 
-@2
+@ARG
 D=M
 
 @SP
@@ -34,7 +34,7 @@ M=D
 @SP
 M=M+1
 
-@3
+@THIS
 D=M
 
 @SP
@@ -44,7 +44,7 @@ M=D
 @SP
 M=M+1
 
-@4
+@THAT
 D=M
 
 @SP
@@ -67,16 +67,16 @@ M=D
 // set LCL = SP
 @SP
 D=M
-@1 // lcl segment pointer
+@LCL // lcl segment pointer
 M=D
 // Handling goto Sys.init
 @Sys.init
 0;JMP
 (CALL_0)// Handling function Main.main 0
 (Main.main)
-// Handling     push constant 7
+// Handling// Handling     push constant 16384
 
-@7
+@16384
 D=A
 
 @SP
@@ -86,9 +86,19 @@ M=D
 @SP
 M=M+1
 
-// Handling     push constant 10
+// Handling// Handling// Handling// Handling     pop pointer 1
 
-@10
+@SP
+M=M-1
+A=M
+D=M
+
+@4
+M=D
+
+// Handling// Handling// Handling// Handling     push constant 1
+
+@1
 D=A
 
 @SP
@@ -98,18 +108,36 @@ M=D
 @SP
 M=M+1
 
-// Handling     add
+// Handling     neg
                 @SP
-                M=M-1 // decrement stack pointer
-                A=M 
-                D=M // save top element of stack
+                A=M-1
+                M=-M    
+                // Handling// Handling// Handling// Handling     pop that 0
 
-                @SP
-                A=M-1 // go to new top element of stack
-                M=D+M // add
+@0
+D=A // store index in D-reg
 
+@4
+D=M+D // store address of index i in segment in D-reg
 
-                // Handling function Sys.init 0
+@13 // general purpose register
+M=D // store address of index i in segment in GPR
+
+@SP
+M=M-1 // decrement stack pointer
+A=M // go to where stack pointer points
+D=M // store top value of stack in D-reg
+
+@13
+A=M // travel to index i of segment
+M=D // set value
+
+// Handling// Handling label END
+(END)
+// Handling     goto END
+@END
+0;JMP
+// Handling function Sys.init 0
 (Sys.init)
 // Handling 	call Main.main 0
 @CALL_1 // generate a label and save it
@@ -122,7 +150,7 @@ M=D
 @SP // increment stack pointer
 M=M+1
 
-@1
+@LCL
 D=M
 
 @SP
@@ -132,7 +160,7 @@ M=D
 @SP
 M=M+1
 
-@2
+@ARG
 D=M
 
 @SP
@@ -142,7 +170,7 @@ M=D
 @SP
 M=M+1
 
-@3
+@THIS
 D=M
 
 @SP
@@ -152,7 +180,7 @@ M=D
 @SP
 M=M+1
 
-@4
+@THAT
 D=M
 
 @SP
@@ -175,7 +203,7 @@ M=D
 // set LCL = SP
 @SP
 D=M
-@1 // lcl segment pointer
+@LCL // lcl segment pointer
 M=D
 // Handling goto Main.main
 @Main.main

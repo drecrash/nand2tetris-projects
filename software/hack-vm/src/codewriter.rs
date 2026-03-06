@@ -478,7 +478,6 @@ impl Codewriter{
         let command_type = Parser::commandType(line.clone());
         let mut output: String = String::new();
 
-        //let label = &format!("{}{}", self.input_file, Parser::arg1(&line));
         let label = Parser::arg1(&line);
 
         match (command_type){
@@ -524,8 +523,6 @@ impl Codewriter{
 
         self.writeToOutput(&format!("// Handling {line}\n"));
 
-        let command_type = Parser::commandType(line.clone());
-
         let mut reposition_pointers_output: String = String::new();
         let mut save_state_output: String = String::new();
 
@@ -534,21 +531,6 @@ impl Codewriter{
         let function_name = Parser::arg1(&line);
 
         let segment_map = self.buildSegmentMap();
-
-        let lcl_pointer = segment_map.get("local")
-            .expect("Error retrieving segment pointer");
-
-        let arg_pointer = segment_map.get("argument")
-            .expect("Error retrieving segment pointer");
-
-
-        let that_pointer = segment_map.get("that")
-            .expect("Error retrieving segment pointer");
-
-        let this_pointer = segment_map.get("this")
-            .expect("Error retrieving segment pointer");
-
-
 
         // need to save return address
         // save segment pointer states
@@ -576,7 +558,7 @@ impl Codewriter{
 
         // TODO: consolidate the following four statements
         save_state_output += &format!("
-        @{}
+        @LCL
         D=M
 
         @SP
@@ -585,11 +567,11 @@ impl Codewriter{
 
         @SP
         M=M+1
-        ", lcl_pointer);
+        ");
 
 
         save_state_output += &format!("
-        @{}
+        @ARG
         D=M
 
         @SP
@@ -598,11 +580,11 @@ impl Codewriter{
 
         @SP
         M=M+1
-        ", arg_pointer);
+        ");
 
 
         save_state_output += &format!("
-        @{}
+        @THIS
         D=M
 
         @SP
@@ -611,11 +593,11 @@ impl Codewriter{
 
         @SP
         M=M+1
-        ", this_pointer);
+        ");
 
 
         save_state_output += &format!("
-        @{}
+        @THAT
         D=M
 
         @SP
@@ -624,7 +606,7 @@ impl Codewriter{
 
         @SP
         M=M+1
-        ", that_pointer);
+        ");
 
         self.writeToOutput(&save_state_output);
 
@@ -650,9 +632,9 @@ impl Codewriter{
         // set LCL = SP
         @SP
         D=M
-        @{} // lcl segment pointer
+        @LCL // lcl segment pointer
         M=D
-        ", lcl_pointer);
+        ");
 
         self.writeToOutput(&reposition_pointers_output);
 
@@ -791,14 +773,10 @@ impl Codewriter{
     pub fn writeFunction(&self, line: String){
         self.writeToOutput(&format!("// Handling {line}\n\n"));
 
-        let mut output: String = String::new();
-
         let function_name = Parser::arg1(&line);
         println!("FUNCTION NAME: {function_name}");
 
         let n_lcl = (Parser::arg2(&line)).parse::<i32>().unwrap();
-
-
 
             self.writeToOutput(&format!("({})\n\n", function_name));
             
