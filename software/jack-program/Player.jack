@@ -1,0 +1,72 @@
+class Player {
+    field int x, y;
+    field int size;
+    method void generateShape() {
+        do Screen.drawRectangle(x, y, size,size);
+        return;
+    }
+
+    constructor Player new(){
+        let size = 100;
+        let x = 0;
+        let y = 0;
+        do generateShape();
+        return this;
+    }
+
+    method void moveDown(){
+
+        do Screen.setColor(false); // draw top two rows as white
+        do Screen.drawRectangle(x,y,(x+size),(y+2));
+
+        do Screen.setColor(true); // draw bottom two rows as black
+        do Screen.drawRectangle(x,(y+size),(x+size),(y+size+2));
+
+        let y = y + 2;
+
+        return;
+    }
+
+    method void moveUp(){
+
+        do Screen.setColor(false); // draw bottom two rows as white
+        do Screen.drawRectangle(x,(y+size),(x+size),(y+size+2));
+        
+
+        do Screen.setColor(true); // draw top two rows as black
+        do Screen.drawRectangle(x,y,(x+size),(y+2));
+
+        let y = y - 2;
+
+        return;
+    }
+
+    method void moveRight(){
+
+        do Screen.setColor(false); // draw left two cols as white
+        do Screen.drawRectangle(x,y,(x+2),(y+size));
+        
+
+        do Screen.setColor(true);
+        do Screen.drawRectangle((x+size),y,(x+size+2),(y+size));
+
+        let x = x + 2;
+
+        return;
+    }
+
+    method void moveLeft(){
+
+        do Screen.setColor(false); // draw left two cols as white
+        do Screen.drawRectangle((x+size),y,(x+size+2),(y+size));
+        
+        
+
+        do Screen.setColor(true);
+        do Screen.drawRectangle(x,y,(x+2),(y+size));
+
+        let x = x - 2;
+
+        return;
+    }
+}

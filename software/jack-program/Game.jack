@@ -1,0 +1,33 @@
+class Game {
+    field Player player;
+
+
+    constructor Game new(){
+        let player = Player.new();
+        return this;
+    }
+
+    method void run(){
+        var int keyPressed;
+        while (true){
+            let keyPressed = Keyboard.keyPressed();
+
+            if (keyPressed = 132){
+                do player.moveRight();
+            }
+            if (keyPressed =130){
+                do player.moveLeft();
+            }
+            if (keyPressed=131){
+                do player.moveUp();
+            }
+            if (keyPressed =133){
+                do player.moveDown();
+            }
+        }
+
+        return;
+    }
+
+    
+}
