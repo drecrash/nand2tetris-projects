@@ -5,6 +5,11 @@ use std::{fs, io, path::Path};
 
 mod codewriter;
 
+/* NOTES TO SELF:
+
+- Remove debug print statements
+
+*/
 // https://medium.com/@trivajay259/listing-files-in-a-directory-in-rust-the-practical-guide-with-python-parallels-25f499e663b6
 fn get_files_in_dir(directory: &str)  -> io::Result<Vec<String>> {
 

@@ -1,8 +1,10 @@
 use std::fs;
 
-use crate::jacktokenizer::JackTokenizer;
+use crate::{compilationengine::CompilationEngine, jacktokenizer::JackTokenizer};
 
 mod jacktokenizer;
+
+mod compilationengine;
 
 fn main() {
     let file_path = "test.txt";
@@ -12,12 +14,37 @@ fn main() {
 
     file_contents = clean_file(file_contents);
 
-    let jack_tokenizer = JackTokenizer {
+    
+    let mut jack_tokenizer = JackTokenizer {
         whole_input: file_contents.clone(),
-        current_token: String::new()
+        current_token_index: 0,
+        tokens: Vec::new()
+    };
+
+    let mut compiler = CompilationEngine {
+        file_contents: file_contents,
+        output_file: "output.txt".to_string(),
+        tokenizer: jack_tokenizer
+    };
+
+    compiler.run_compiler();
+
+    /*
+
+    let mut jack_tokenizer = JackTokenizer {
+        whole_input: file_contents.clone(),
+        current_token_index: 0,
+        tokens: Vec::new()
     };
 
     jack_tokenizer.tokenize(file_contents);
+
+    while (jack_tokenizer.has_more_tokens()){
+        println!("{}: {:?}", jack_tokenizer.get_current_token(), jack_tokenizer.get_token_type());
+        jack_tokenizer.advance_index();
+    }
+
+    */
 
     //let instruction_set: Vec<&str> = file_contents.lines().collect();
 }
