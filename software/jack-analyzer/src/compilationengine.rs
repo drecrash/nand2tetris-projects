@@ -108,7 +108,13 @@ impl CompilationEngine {
     pub fn run_compiler(&mut self){
         self.loadTokenizer();
         self.createOutputFile();
-        let output = self.CompileClass();
+        let mut output = self.CompileClass();
+
+        output = output.replace("<symbol>&", "<symbol>&amp;");
+        output = output.replace("<symbol><", "<symbol>&lt;");
+        output = output.replace("<symbol>>", "<symbol>&gt;");
+        output = output.replace("<symbol>\"", "<symbol>&quot;");
+        
 
         self.writeToOutput(&output);
     }
@@ -251,13 +257,17 @@ impl CompilationEngine {
                         output += &self.format_terminal();
                         self.tokenizer.advance_index(); 
 
+                        output += "<parameterList>\n";
                         if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
                             output += &self.compileParameterList();
 
                         }
+                        output += "</parameterList>\n";
                         if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL) { // close parentheses
                             output += &self.format_terminal();
                             self.tokenizer.advance_index(); 
+
+                            output += "<subroutineBody>\n";
 
                             if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '{'
                                 output += &self.format_terminal();
@@ -276,6 +286,8 @@ impl CompilationEngine {
                                     }
                                 }
                             }
+
+                            output += "</subroutineBody>\n";
                         }
                         
 
@@ -351,9 +363,6 @@ impl CompilationEngine {
 
     fn compileParameterList(&mut self) -> String{
         let mut output = "".to_string();
-
-        output += "<parameterList>\n";
-
          
         if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
             output += &self.format_terminal();
@@ -377,7 +386,6 @@ impl CompilationEngine {
             }
         }
 
-        output += "</parameterList>\n";
 
         return output;
 
@@ -393,10 +401,7 @@ impl CompilationEngine {
 
 
         while (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){
-
-            output += "<statement>\n";
             
-
             match(self.tokenizer.get_current_token().as_str()){
                 "let" => {
                     output += &self.compileLet();
@@ -418,7 +423,6 @@ impl CompilationEngine {
                 }
             }
 
-            output += "</statement>\n";
 
         }
 
@@ -688,6 +692,7 @@ impl CompilationEngine {
                 self.tokenizer.advance_index();          
 
             } else {
+                
                 output += &self.compileSubroutineCall();
             }
 
@@ -698,7 +703,7 @@ impl CompilationEngine {
 
             output += &self.compileTerm(); 
 
-        } else if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // (expression)
+        } else if (self.tokenizer.get_current_token() == "("){ // (expression)
             output += &self.format_terminal();
             self.tokenizer.advance_index();   
 
@@ -721,22 +726,39 @@ impl CompilationEngine {
 
 
 
+    // this compilation function will handle the parentheses processing
     fn compileExpressionList(&mut self) -> String{
         let mut output = "".to_string();
         
-        output += "<expressionList>\n";
+        
 
 
-        output += &self.compileExpression();
-
-        while (&self.tokenizer.get_current_token() == ","){
+        if (self.tokenizer.get_current_token() == "("){ 
             output += &self.format_terminal();
             self.tokenizer.advance_index(); 
+        }
 
-            output += &self.compileExpression();      
+        output += "<expressionList>\n";
+
+        if (self.tokenizer.get_current_token() != ")"){
+            output += &self.compileExpression();
+
+            while (&self.tokenizer.get_current_token() == ","){
+                output += &self.format_terminal();
+                self.tokenizer.advance_index(); 
+
+                output += &self.compileExpression();      
+            }
         }
 
         output += "</expressionList>\n";
+
+        output += &self.format_terminal();
+        self.tokenizer.advance_index(); 
+
+
+
+        
 
         return output;
     }
@@ -747,8 +769,6 @@ impl CompilationEngine {
         let mut output = "".to_string();
 
         if (self.tokenizer.get_current_token() == "("){ // subroutineName (expressionList)
-            output += &self.format_terminal();
-            self.tokenizer.advance_index(); 
 
             output += &self.compileExpressionList();         
 
@@ -764,14 +784,10 @@ impl CompilationEngine {
                 self.tokenizer.advance_index();   
 
 
-                if (self.tokenizer.get_current_token() == "("){ // subroutineName (expressionList)
-                    output += &self.format_terminal();
-                    self.tokenizer.advance_index();    
+                if (self.tokenizer.get_current_token() == "("){ // subroutineName (expressionList) 
 
                     output += &self.compileExpressionList();         
 
-                    output += &self.format_terminal(); // handle close parentheses
-                    self.tokenizer.advance_index();  
                 }
             } 
 
