@@ -55,7 +55,7 @@ impl JackTokenizer {
     }
 
     fn all_symbols(&self) -> Vec<String>{
-        let symbols = vec!["{" , "}" , "(" , ")" , "[" , "]" , ". " , ", " , "; " , "+" , "-" , "*" , "/" , "&" , "," , "<" , ">" , "=" , "~"]
+        let symbols = vec!["{" , "}" , "(" , ")" , "[" , "]" , "." , "," , ";" , "+" , "-" , "*" , "/" , "&" , "," , "<" , ">" , "=" , "~"]
             .into_iter()
             .map(String::from)
             .collect();

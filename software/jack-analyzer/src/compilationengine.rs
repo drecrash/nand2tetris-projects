@@ -119,7 +119,6 @@ impl CompilationEngine {
         let mut output = "".to_string();
         output += "<class>\n";
         if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // should be 'class' terminal
-            output += "<keyword>\n";
 
             output += &self.format_terminal();
 
@@ -255,31 +254,30 @@ impl CompilationEngine {
                         if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
                             output += &self.compileParameterList();
 
-                            if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be close parentheses
+                        }
+                        if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL) { // close parentheses
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index(); 
+
+                            if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '{'
                                 output += &self.format_terminal();
                                 self.tokenizer.advance_index(); 
 
-                                if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '{'
-                                    output += &self.format_terminal();
-                                    self.tokenizer.advance_index(); 
+                                while (self.tokenizer.get_current_token() == "var"){
+                                    output += &self.compileVarDec();
+                                }
+                                if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){
+                                    output += &self.compileStatements();
 
-                                    while (self.tokenizer.get_current_token() == "var"){
-                                        output += &self.compileVarDec();
-                                    }
-                                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){
-                                        output += &self.compileStatements();
+                                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '}'
+                                        output += &self.format_terminal();
+                                        self.tokenizer.advance_index(); 
 
-                                        if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '}'
-                                            output += &self.format_terminal();
-                                            self.tokenizer.advance_index(); 
-
-                                        }
                                     }
                                 }
                             }
-
-
-                        }   
+                        }
+                        
 
                     }
                 }
@@ -303,7 +301,6 @@ impl CompilationEngine {
 
         output += "<varDec>\n";
 
-        self.tokenizer.advance_index(); 
         if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // should be var
             output += &self.format_terminal();
             self.tokenizer.advance_index(); 
@@ -332,7 +329,10 @@ impl CompilationEngine {
                     if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){
                         output += &self.format_terminal();
                         self.tokenizer.advance_index();
-                    }              
+                    }    
+                    else {
+                        println!("NOT A SYMBOL: {:?} is {:?}", self.tokenizer.get_current_token(), self.tokenizer.get_token_type());
+                    }          
 
                 }
             }

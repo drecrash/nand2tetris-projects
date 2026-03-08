@@ -2,7 +2,6 @@
 // and the book "The Elements of Computing Systems"
 // by Nisan and Schocken, MIT Press.
 
-/** Computes the average of a sequence of integers. */
 class Main {
     function void main() {
         var Array a;

@@ -68,8 +68,14 @@ fn clean_file(mut contents: String) -> String{
     }
 
 
-    let mut fin_contents: String = updated_contents.join("\n");
-    //fin_contents = fin_contents.replace(" ", "");
+
+
+    let mut joined_contents: String = updated_contents.join("\n");
+
+
+    // TO DO: need to remove multi-line comments
+    let mut fin_contents: String = joined_contents;
+
     fin_contents
 
 }
