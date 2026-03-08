@@ -263,7 +263,7 @@ impl CompilationEngine {
                                     output += &self.format_terminal();
                                     self.tokenizer.advance_index(); 
 
-                                    while (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){
+                                    while (self.tokenizer.get_current_token() == "var"){
                                         output += &self.compileVarDec();
                                     }
                                     if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){
@@ -422,6 +422,8 @@ impl CompilationEngine {
 
         }
 
+        output += "</statements>\n";
+
         return output
     }
 
@@ -477,13 +479,108 @@ impl CompilationEngine {
     fn compileIf(&mut self) -> String{
         let mut output = "".to_string();
         //
+
+        output += "<ifStatement>\n";
+
+        if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // if
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();
+
+            if (self.tokenizer.get_current_token() == "("){
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();
+
+                output += &self.compileExpression();
+
+                if (self.tokenizer.get_current_token() == ")"){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();
+
+                    if (self.tokenizer.get_current_token() == "{"){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index();
+
+                        output += &self.compileStatements();
+
+                        if (self.tokenizer.get_current_token() == "}"){
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index();     
+
+
+                            if (self.tokenizer.get_current_token() == "else"){ // this part is optional
+                                output += &self.format_terminal();
+                                self.tokenizer.advance_index();     
+   
+                                if (self.tokenizer.get_current_token() == "{"){
+                                    output += &self.format_terminal();
+                                    self.tokenizer.advance_index();
+
+                                    output += &self.compileStatements();
+
+                                    if (self.tokenizer.get_current_token() == "}"){
+                                        output += &self.format_terminal();
+                                        self.tokenizer.advance_index();   
+                                    }
+                                }
+                            }                    
+                        }
+                    }
+                }
+
+                
+            }
+        }
+
+
+        
+        output += "</ifStatement>\n";
+
         return output;
     }
 
 
     fn compileWhile(&mut self) -> String{
         let mut output = "".to_string();
+
+        output += "<whileStatement>\n";
+
+        if (self.tokenizer.get_current_token() == "while"){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            if (self.tokenizer.get_current_token() == "("){
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();   
+
+                output += &self.compileExpression();
+
+                if (self.tokenizer.get_current_token() == ")"){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index(); 
+
+                    if (self.tokenizer.get_current_token() == "{"){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index(); 
+
+                        output += &self.compileStatements();
+
+                        if (self.tokenizer.get_current_token() == "}"){
+
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index(); 
+
+                        }
+
+
+                    }
+
+
+                }  
+            }
+
+        }
         //
+        output += "</whileStatement>\n";
         return output;
     }
 
@@ -491,6 +588,29 @@ impl CompilationEngine {
     fn compileDo(&mut self) -> String{
         let mut output = "".to_string();
         //
+        output += "<doStatement>\n";
+
+        if (self.tokenizer.get_current_token() == "do"){
+
+            output += &self.format_terminal();
+            self.tokenizer.advance_index(); 
+
+            if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // (subroutineName | className | varName)
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();         
+
+                output += &self.compileSubroutineCall();
+
+                if (self.tokenizer.get_current_token() == ";"){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();           
+                }       
+            }
+
+
+        }
+
+        output += "</doStatement>\n";
         return output;
     }
 
@@ -498,12 +618,167 @@ impl CompilationEngine {
     fn compileReturn(&mut self) -> String{
         let mut output = "".to_string();
         //
+
+        output += "<returnStatement>\n";
+
+        if (self.tokenizer.get_current_token() == "return"){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            if (self.tokenizer.get_current_token() == ";"){
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();           
+            }     
+            else {
+                output += &self.compileExpression();
+            }
+        }
+
+        output += "</returnStatement>\n";
         return output;
     }
 
+    // Grammar: term (op term)*
     fn compileExpression(&mut self) -> String{
         let mut output = "".to_string();
-        //
+        
+        output += "<expression>\n";
+
+        output += &self.compileTerm();
+
+        while (self.tokenizer.is_op()){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            output += &self.compileTerm();
+        }
+
+        output += "</expression>\n";
+
+
+
         return output;    
+    }
+
+    fn compileTerm(&mut self) -> String{
+        let mut output = "".to_string();
+        
+        output += "<term>\n";
+
+        if ((self.tokenizer.get_token_type() == TOKEN_TYPE::INT_CONST) | (self.tokenizer.get_token_type() == TOKEN_TYPE::STRING_CONST)){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+        }
+
+        else if (self.tokenizer.is_keyword_const()){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+        } else if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varName | varName[expression] | subroutineCall
+            output += &self.format_terminal(); // consumes either varName or (subroutineName | className | varName) depending on which part of the grammar is being used
+            self.tokenizer.advance_index();   
+
+            if (self.tokenizer.get_current_token() == "["){ // varName[expression]
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();       
+
+                output += &self.compileExpression(); // WARNING: recursion    
+
+                output += &self.format_terminal(); // handle close bracket
+                self.tokenizer.advance_index();          
+
+            } else {
+                output += &self.compileSubroutineCall();
+            }
+
+        } else if (self.tokenizer.is_unary_op()){ // unaryOp term
+
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            output += &self.compileTerm(); 
+
+        } else if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // (expression)
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            output += &self.compileExpression();
+
+            output += &self.format_terminal(); // handle close parentheses
+            self.tokenizer.advance_index();   
+
+        }
+
+
+        output += "</term>\n";
+
+
+
+        return output; 
+
+
+    }
+
+
+
+    fn compileExpressionList(&mut self) -> String{
+        let mut output = "".to_string();
+        
+        output += "<expressionList>\n";
+
+
+        output += &self.compileExpression();
+
+        while (&self.tokenizer.get_current_token() == ","){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index(); 
+
+            output += &self.compileExpression();      
+        }
+
+        output += "</expressionList>\n";
+
+        return output;
+    }
+
+
+    // assumes subroutineName | className | varName have already been consumed
+    fn compileSubroutineCall(&mut self) -> String{
+        let mut output = "".to_string();
+
+        if (self.tokenizer.get_current_token() == "("){ // subroutineName (expressionList)
+            output += &self.format_terminal();
+            self.tokenizer.advance_index(); 
+
+            output += &self.compileExpressionList();         
+
+            output += &self.format_terminal(); // handle close parentheses
+            self.tokenizer.advance_index(); 
+
+        } else if (self.tokenizer.get_current_token() == "."){ // (className|varName).subroutineName(expressionList)
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();  
+
+            if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // subroutineName
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();   
+
+
+                if (self.tokenizer.get_current_token() == "("){ // subroutineName (expressionList)
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();    
+
+                    output += &self.compileExpressionList();         
+
+                    output += &self.format_terminal(); // handle close parentheses
+                    self.tokenizer.advance_index();  
+                }
+            } 
+
+        }
+
+
+        return output;
+
     }
 }

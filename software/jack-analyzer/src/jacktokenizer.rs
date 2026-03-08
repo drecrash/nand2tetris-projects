@@ -120,6 +120,34 @@ impl JackTokenizer {
 
     }
 
+    pub fn is_unary_op(&mut self) -> bool{
+        let unary_ops: Vec<String> = vec!["-", "~"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+
+        return (unary_ops.contains(&self.get_current_token()));
+    }
+
+    
+    pub fn is_op(&mut self) -> bool{
+        let ops: Vec<String> = vec!["+" , "-" , "*" , "/" , "&" , "," , "<" , ">" , "="]
+            .into_iter()
+            .map(String::from)
+            .collect();
+
+        return (ops.contains(&self.get_current_token()));
+    }
+
+    pub fn is_keyword_const(&mut self)->bool{
+        let ops: Vec<String> = vec!["true", "false", "null", "this"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+
+        return (ops.contains(&self.get_current_token())); 
+    }
+
 
 
 }
