@@ -47,6 +47,8 @@ The tokenizer module breaks down an input file into the lexical elements defined
 This module also has an iterator/pointer that indicates the current token being observed. This pointer can be incremented.
 The type of the token (Keyword, Symbol, Integer, String, or Identifier) can also be obtained through a module method.
 
+My implementation slightly deviates from the traditional specification, as a standalone "XxxT.xml" token file is not produced. Rather, the tokenizer provides an accessible in-memory stream of tokens to the parser.
+
 ### The Parser
 The parser translates the list of tokens into a ".xml" file by following the Jack Grammar guidelines as provided by the NAND2Tetris specifications, and employing recursive descent parsing to have each nonterminal head of the grammar call separate functions to compile the symbols in its body.
 
