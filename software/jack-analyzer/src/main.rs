@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, io};
 
 use crate::{compilationengine::CompilationEngine, jacktokenizer::JackTokenizer};
 
@@ -6,52 +6,76 @@ mod jacktokenizer;
 
 mod compilationengine;
 
-fn main() {
-    let file_path = "test.txt";
+// https://medium.com/@trivajay259/listing-files-in-a-directory-in-rust-the-practical-guide-with-python-parallels-25f499e663b6
+fn get_files_in_dir(directory: &str)  -> io::Result<Vec<String>> {
 
-    let mut file_contents = fs::read_to_string(file_path)
-        .expect("File read error");
+    let mut all_files: Vec<String> = fs::read_dir(directory)?
+            .map(|res| {
+                let entry = res?;
+                let path = entry
+                    .file_name()                
+                    .to_string_lossy() 
+                    .into_owned();
+                Ok(path)
+            })
+            .collect::<io::Result<Vec<_>>>()?;
 
-    file_contents = clean_file(file_contents);
-
-    
-    let mut jack_tokenizer = JackTokenizer {
-        whole_input: file_contents.clone(),
-        current_token_index: 0,
-        tokens: Vec::new()
-    };
-
-    let mut compiler = CompilationEngine {
-        file_contents: file_contents,
-        output_file: "output.txt".to_string(),
-        tokenizer: jack_tokenizer
-    };
-
-    compiler.run_compiler();
-
-    /*
-
-    let mut jack_tokenizer = JackTokenizer {
-        whole_input: file_contents.clone(),
-        current_token_index: 0,
-        tokens: Vec::new()
-    };
-
-    jack_tokenizer.tokenize(file_contents);
-
-    while (jack_tokenizer.has_more_tokens()){
-        println!("{}: {:?}", jack_tokenizer.get_current_token(), jack_tokenizer.get_token_type());
-        jack_tokenizer.advance_index();
-    }
-
-    */
-
-    //let instruction_set: Vec<&str> = file_contents.lines().collect();
+    Ok(all_files)
 }
 
 
+fn main() {
+
+
+    let mut user_input = String::new();
+
+    io::stdin().read_line(&mut user_input)
+        .expect("failed get user input");
+
+    println!("{user_input}");
+
+    let directory = user_input.as_str().trim();
+    let all_files = get_files_in_dir(directory).unwrap();
+
+    for file_path in all_files{
+
+
+        if (!file_path.contains(".jack")){
+            continue;
+        }
+
+        let mut file_path_parts: Vec<&str>;
+        file_path_parts = file_path.split(".").collect();
+        let file_path_root = file_path_parts[0];
+
+        let mut file_contents = fs::read_to_string(format!("{}/{}",directory,file_path))
+            .expect("File read error");
+
+        let output_file = format!("{}.xml", file_path_root);
+
+        file_contents = clean_file(file_contents);
+
+        
+        let mut jack_tokenizer = JackTokenizer {
+            whole_input: file_contents.clone(),
+            current_token_index: 0,
+            tokens: Vec::new()
+        };
+
+        let mut compiler = CompilationEngine {
+            file_contents: file_contents,
+            output_file: output_file.to_string(),
+            tokenizer: jack_tokenizer
+        };
+
+        compiler.run_compiler();
+    }
+
+
+}
+
+// TO DO: need to remove multi-line comments
 fn clean_file(mut contents: String) -> String{
-    //contents = contents.replace(" ", ""); // get rid of white space
 
     let all_lines: Vec<&str> = contents.lines().collect();
     let mut updated_contents: Vec<&str> = Vec::new();
@@ -73,7 +97,7 @@ fn clean_file(mut contents: String) -> String{
     let mut joined_contents: String = updated_contents.join("\n");
 
 
-    // TO DO: need to remove multi-line comments
+    
     let mut fin_contents: String = joined_contents;
 
     fin_contents
@@ -90,8 +114,6 @@ Jack Non-Terminals:
 
 Jack Terminals:
 - keyword, symbol, integerConstant, stringConstant, or identifier
-
-
 
 
 */

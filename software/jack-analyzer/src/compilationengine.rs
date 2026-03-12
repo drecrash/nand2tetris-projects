@@ -142,7 +142,7 @@ impl CompilationEngine {
 
                     self.tokenizer.advance_index();
 
-                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // Could be classVarDec or subroutineDec
+                    while (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // Could be classVarDec or subroutineDec
 
                         while ((self.tokenizer.get_current_token() == "static") | (self.tokenizer.get_current_token() == "field")){
                             output += &self.compileClassVarDec();
@@ -151,6 +151,8 @@ impl CompilationEngine {
                         while ((self.tokenizer.get_current_token() == "constructor") | (self.tokenizer.get_current_token() == "function") | (self.tokenizer.get_current_token() == "method")){
                             output += &self.compileSubroutine();
                         }
+
+                        self.tokenizer.advance_index();
                         
                         
                     } 
@@ -376,12 +378,16 @@ impl CompilationEngine {
                     output += &self.format_terminal();
                     self.tokenizer.advance_index();
 
-                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varname
+                    if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
 
                         output += &self.format_terminal();
                         self.tokenizer.advance_index();
 
+                        output += &self.format_terminal(); //varname
+                        self.tokenizer.advance_index();
+
                     }
+
                 }
             }
         }
@@ -629,13 +635,13 @@ impl CompilationEngine {
             output += &self.format_terminal();
             self.tokenizer.advance_index();   
 
+            if (self.tokenizer.get_current_token() != ";"){
+                output += &self.compileExpression();
+            }
             if (self.tokenizer.get_current_token() == ";"){
                 output += &self.format_terminal();
                 self.tokenizer.advance_index();           
             }     
-            else {
-                output += &self.compileExpression();
-            }
         }
 
         output += "</returnStatement>\n";
@@ -650,7 +656,7 @@ impl CompilationEngine {
 
         output += &self.compileTerm();
 
-        while (self.tokenizer.is_op()){
+        while (self.tokenizer.is_op() && self.tokenizer.get_current_token() != ","){ // ',' is handled by compileExpressionList
             output += &self.format_terminal();
             self.tokenizer.advance_index();   
 
