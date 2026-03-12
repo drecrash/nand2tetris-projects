@@ -23,8 +23,6 @@ A custom binary-to-decimal translator function is used to process A-instructions
 
 ## The Virtual Machine Translator
 
-*Please note that Project 8 is **in progress**; the VM Translator is still being built.*
-
 The VM Translator translates virtual machine language into assembly language, which can then be processed by the assembler into binary. 
 
 Different portions of memory are allocated to various segments, and pointers at the top of the memory (RAM\[0\] through RAM\[4\]) point to where these portions of memory are located. Note that RAM\[5\] through RAM\[12\] are apportioned to fixed memory.
@@ -36,3 +34,19 @@ Each instruction (push, pop, and the various operators) has a specific set of as
 The “static” segment is especially interesting, as index ‘i’ of the static segment is stored as the label (Xxx.i), where Xxx is the name of the output file. (Note: this should be changed to the input file, I have it set as the output file for the sake of simplicity while development is in progress).
 
 ![Hack Specifications for memory segmentation](https://github.com/drecrash/nand2tetris-projects/blob/master/images/hackRAM.png)
+
+## The Jack Analyzer
+
+The Jack Analyzer interprets files written in the Jack programming language, and translates them to tokenized and parsed 
+".xml" files. The analyzer works in two steps: a tokenizer and a parser.
+
+When the program is run, the user must input a directory containing files of the form "Xxx.jack". This analyzer will then output corresponding "Xxx.xml" files.
+
+### The Tokenizer
+The tokenizer module breaks down an input file into the lexical elements defined by the Jack grammar using regex, and converts it to a traversable list/vector.
+This module also has an iterator/pointer that indicates the current token being observed. This pointer can be incremented.
+The type of the token (Keyword, Symbol, Integer, String, or Identifier) can also be obtained through a module method.
+
+### The Parser
+The parser translates the list of tokens into a ".xml" file by following the Jack Grammar guidelines as provided by the NAND2Tetris specifications, and employing recursive descent parsing to have each nonterminal head of the grammar call separate functions to compile the symbols in its body.
+

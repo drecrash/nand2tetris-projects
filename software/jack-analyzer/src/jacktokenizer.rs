@@ -28,19 +28,6 @@ pub enum KEYWORD {
     FALSE, NULL, THIS
 }
 
-/* Routines
-- hasMoreTokens *
-- advance: advances current_token *
-- tokenType: returns token type of current_token *
-- keyWord
-- symbol
-- identifier
-- intVal
-- stringVal
-
-*/
-
-
 
 
 impl JackTokenizer {
