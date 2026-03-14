@@ -1,0 +1,886 @@
+/* Routines
+
+CompileClass
+CompileClassVarDec
+CompileSubroutine
+
+compileParameterList
+compileVarDec
+compileStatements
+compileDo
+compileLet
+compileWhile
+compileReturn
+compileIf
+
+CompileExpression
+CompileTerm
+CompileExpressionList
+
+
+*/
+
+use std::{fs::{File, OpenOptions}, hash::Hash, io::Write};
+use crate::{jacktokenizer::{JackTokenizer, TOKEN_TYPE}, symboltable};
+use crate::symboltable::{SymbolTable};
+
+
+pub struct CompilationEngine {
+
+    pub file_contents: String,
+    pub output_file: String,
+    pub tokenizer: JackTokenizer,
+    pub symbol_table: SymbolTable
+
+}
+
+impl CompilationEngine {
+
+    fn loadTokenizer(&mut self){
+        let mut jack_tokenizer = JackTokenizer {
+            whole_input: self.file_contents.clone(),
+            current_token_index: 0,
+            tokens: Vec::new()
+        };
+
+        jack_tokenizer.tokenize(self.file_contents.clone());
+
+        self.tokenizer = jack_tokenizer;
+    }
+
+    fn initializeSymbolTables(&mut self){
+        let mut symbol_table = SymbolTable::new();
+        symbol_table.clear_class_scope();
+        symbol_table.clear_subroutine_scope();
+        self.symbol_table = symbol_table;
+
+    }
+    
+    fn trimOutput(&self, mut contents: &str) -> String{
+        let all_lines: Vec<&str> = contents.lines().collect();
+        let mut updated_contents: Vec<&str> = Vec::new();
+
+        for mut line in all_lines{ // remove comments
+            line = line.trim();
+            updated_contents.push(line);
+        }
+
+
+        let mut fin_contents: String = updated_contents.join("\n");
+
+        return fin_contents
+    }
+
+    pub fn writeToOutput(&self, mut output: &str){
+        //println!("Writing: {output}");
+        let mut output_file = OpenOptions::new().read(true).append(true).open(&self.output_file)
+            .expect("err");
+
+        let written_output = self.trimOutput(output);
+
+        output_file.write_all(&written_output.as_bytes());
+    }
+
+    pub fn createOutputFile(&mut self){
+        let output_file_create = File::create(&self.output_file)
+            .expect("error");
+    }
+
+
+    // Returns current token in the form <terminalType> xxx </terminalType>
+    fn format_terminal(&mut self) -> String{
+
+        let mut output = "".to_string();
+
+        match (self.tokenizer.get_token_type()){
+            TOKEN_TYPE::KEYWORD =>{
+                return format!("<keyword>{}</keyword>\n", self.tokenizer.get_current_token());
+            },
+            TOKEN_TYPE::IDENTIFIER =>{
+                return format!("<identifier>{}</identifier>\n", self.tokenizer.get_current_token());
+            },
+            TOKEN_TYPE::INT_CONST =>{
+                return format!("<integerConstant>{}</integerConstant>\n", self.tokenizer.get_current_token());
+            },
+            TOKEN_TYPE::STRING_CONST =>{
+                return format!("<stringConstant>{}</stringConstant>\n", self.tokenizer.get_current_token());
+            },
+            TOKEN_TYPE::SYMBOL =>{
+                return format!("<symbol>{}</symbol>\n", self.tokenizer.get_current_token());
+            },
+            _=>{
+                return "".to_string();
+            }
+        }
+
+    }
+
+    pub fn run_compiler(&mut self){
+        self.loadTokenizer();
+        self.createOutputFile();
+        self.initializeSymbolTables();
+        let mut output = self.CompileClass();
+
+        output = output.replace("<symbol>&", "<symbol>&amp;");
+        output = output.replace("<symbol><", "<symbol>&lt;");
+        output = output.replace("<symbol>>", "<symbol>&gt;");
+        output = output.replace("<symbol>\"", "<symbol>&quot;");
+        
+
+        self.writeToOutput(&output);
+        self.symbol_table.display_symbol_table(true);
+        self.symbol_table.display_symbol_table(false);
+    }
+
+
+
+    fn CompileClass(&mut self) -> String{
+        let mut output = "".to_string();
+        output += "<class>\n";
+
+        let mut class_name = String::new();
+        if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // should be 'class' terminal
+
+            self.symbol_table.clear_class_scope();
+
+
+            output += &self.format_terminal();
+
+            self.tokenizer.advance_index();
+
+            if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // should be className
+
+                class_name = self.tokenizer.get_current_token();
+
+                output += &self.format_terminal();
+
+                self.tokenizer.advance_index();
+
+                if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '{'
+                    
+                    output += &self.format_terminal();
+
+                    self.tokenizer.advance_index();
+
+                    while (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // Could be classVarDec or subroutineDec
+
+                        while ((self.tokenizer.get_current_token() == "static") | (self.tokenizer.get_current_token() == "field")){
+                            output += &self.compileClassVarDec();
+                        };
+
+                        while ((self.tokenizer.get_current_token() == "constructor") | (self.tokenizer.get_current_token() == "function") | (self.tokenizer.get_current_token() == "method")){
+                            output += &self.compileSubroutine(class_name.clone());
+                        }
+
+                        self.tokenizer.advance_index();
+                        
+                        
+                    } 
+
+                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '}'
+
+                        output += &self.format_terminal();
+
+                        self.tokenizer.advance_index();
+
+                    }
+
+                }
+
+            }
+
+
+
+
+
+        }
+
+        output += "</class>\n";
+
+        return output;
+    }
+
+
+    fn compileClassVarDec(&mut self) -> String{
+        let mut output = "".to_string();
+
+        output += "<classVarDec>\n";
+
+        let mut var_kind = String::new();
+        let mut var_name = String::new();
+        let mut var_type = String::new();
+
+        if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // 'static' or 'field'
+
+            var_kind = self.tokenizer.get_current_token();
+
+            output += &self.format_terminal();
+
+            self.tokenizer.advance_index();
+
+            if ((self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD) | (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER)){ // 'int', 'char', 'bool', or className
+
+                var_type = self.tokenizer.get_current_token();
+
+                output += &self.format_terminal();
+
+                self.tokenizer.advance_index();
+
+                if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varname 
+
+
+                    var_name = self.tokenizer.get_current_token();
+                    self.symbol_table.push_symbol(true, var_name.clone(), var_type.clone(), var_kind.clone());
+
+                    output += &self.format_terminal();
+
+                    self.tokenizer.advance_index();
+
+                    while (self.tokenizer.get_current_token() == ","){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index();
+
+                        if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varname
+
+                            var_name = self.tokenizer.get_current_token();
+                            self.symbol_table.push_symbol(true, var_name.clone(), var_type.clone(), var_kind.clone());
+
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index();
+
+                        }
+                    }
+
+                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){// ;
+
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index();
+
+                    }
+
+                }
+            
+
+            }
+
+        }
+
+        output += "</classVarDec>\n";
+
+
+        return output;
+
+    }
+
+
+    fn compileSubroutine(&mut self, class_name: String) -> String{
+
+        let mut output = "".to_string();
+
+        output += "<subroutineDec>\n";
+
+
+
+        if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // 'constructor', 'function', or 'method'
+
+            self.symbol_table.clear_subroutine_scope();
+
+            if (self.tokenizer.get_current_token() == "method"){
+                self.symbol_table.initialize_method(class_name);
+            }
+
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();
+
+            if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ // 'void', 'int', 'char', 'bool', or className
+                output += &self.format_terminal();
+
+                self.tokenizer.advance_index();
+
+                if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ //subroutine name
+                    output += &self.format_terminal();
+
+                    self.tokenizer.advance_index();
+
+                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be open parentheses 
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index(); 
+
+                        output += "<parameterList>\n";
+                        if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
+                            output += &self.compileParameterList();
+
+                        }
+                        output += "</parameterList>\n";
+                        if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL) { // close parentheses
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index(); 
+
+                            output += "<subroutineBody>\n";
+
+                            if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '{'
+                                output += &self.format_terminal();
+                                self.tokenizer.advance_index(); 
+
+                                while (self.tokenizer.get_current_token() == "var"){
+                                    output += &self.compileVarDec();
+                                }
+                                if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){
+                                    output += &self.compileStatements();
+
+                                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '}'
+                                        output += &self.format_terminal();
+                                        self.tokenizer.advance_index(); 
+
+                                    }
+                                }
+                            }
+
+                            output += "</subroutineBody>\n";
+                        }
+                        
+
+                    }
+                }
+
+
+            }
+        }
+
+
+        output += "</subroutineDec>\n";
+
+
+        return output;
+
+    }
+
+
+
+    fn compileVarDec(&mut self) -> String{
+        let mut output = "".to_string();
+
+        output += "<varDec>\n";
+
+
+        let mut var_name = String::new();
+        let mut var_type = String::new();
+
+        if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // should be var
+            output += &self.format_terminal();
+            self.tokenizer.advance_index(); 
+
+
+            if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
+
+
+                var_type = self.tokenizer.get_current_token();
+
+
+                output += &self.format_terminal();
+                self.tokenizer.advance_index(); 
+
+                if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varname
+
+                    var_name = self.tokenizer.get_current_token();
+
+
+                    self.symbol_table.push_symbol(false, var_name, var_type.clone(), "local".to_string());
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();       
+
+                    while (self.tokenizer.get_current_token() == ","){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index();
+
+                        if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varname
+
+                            var_name = self.tokenizer.get_current_token();
+                            self.symbol_table.push_symbol(false, var_name, var_type.clone(), "local".to_string());
+
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index();
+
+                        }
+                    }
+
+                    if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index();
+                    }    
+                    else {
+                        println!("NOT A SYMBOL: {:?} is {:?}", self.tokenizer.get_current_token(), self.tokenizer.get_token_type());
+                    }          
+
+                }
+            }
+
+
+
+        }
+
+
+        output += "</varDec>\n";
+
+        return output;
+    }
+
+
+
+    fn compileParameterList(&mut self) -> String{
+        let mut output = "".to_string();
+
+        let mut var_type = String::new();
+        let mut var_name = String::new();
+         
+        if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
+
+            var_type = self.tokenizer.get_current_token();
+
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();
+
+            if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varname
+
+                var_name = self.tokenizer.get_current_token();
+
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();
+
+                self.symbol_table.push_symbol(false, var_name, var_type, "arg".to_string());
+
+
+                while (self.tokenizer.get_current_token() == ","){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();
+
+                    if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
+                        var_type = self.tokenizer.get_current_token();
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index();
+
+
+                        var_name = self.tokenizer.get_current_token();
+                        output += &self.format_terminal(); //varname
+                        self.tokenizer.advance_index();
+
+                        self.symbol_table.push_symbol(false, var_name, var_type, "arg".to_string());
+
+                    }
+
+                }
+            }
+        }
+
+
+        return output;
+
+
+
+    }
+
+
+    fn compileStatements(&mut self) -> String{
+        let mut output = "".to_string();
+
+        output += "<statements>\n";
+
+
+        while (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){
+            
+            match(self.tokenizer.get_current_token().as_str()){
+                "let" => {
+                    output += &self.compileLet();
+                },
+                "if" => {
+                    output += &self.compileIf();
+                },
+                "while" => {
+                    output += &self.compileWhile();
+                },
+                "do" => {
+                    output += &self.compileDo();
+                },
+                "return" =>{
+                    output += &self.compileReturn();
+                }
+                _=>{
+                    output += "";
+                }
+            }
+
+
+        }
+
+        output += "</statements>\n";
+
+        return output
+    }
+
+    fn compileLet(&mut self) -> String{
+        let mut output = "".to_string();
+        
+
+        output += "<letStatement>\n";
+
+        if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // let
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();
+
+            if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varname
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();
+
+                if (self.tokenizer.get_current_token() == "["){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();        
+
+                    output += &self.compileExpression();
+
+
+                    if (self.tokenizer.get_current_token() == "]"){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index();  
+                    }   
+                }
+
+                if (self.tokenizer.get_current_token() == "="){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();   
+
+                    output += &self.compileExpression();
+
+                    if (self.tokenizer.get_current_token() == ";"){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index();   
+                    }
+                }
+            }
+
+        }
+
+
+        output += "</letStatement>\n";
+
+        return output;
+    }
+
+
+    fn compileIf(&mut self) -> String{
+        let mut output = "".to_string();
+        //
+
+        output += "<ifStatement>\n";
+
+        if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // if
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();
+
+            if (self.tokenizer.get_current_token() == "("){
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();
+
+                output += &self.compileExpression();
+
+                if (self.tokenizer.get_current_token() == ")"){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();
+
+                    if (self.tokenizer.get_current_token() == "{"){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index();
+
+                        output += &self.compileStatements();
+
+                        if (self.tokenizer.get_current_token() == "}"){
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index();     
+
+
+                            if (self.tokenizer.get_current_token() == "else"){ // this part is optional
+                                output += &self.format_terminal();
+                                self.tokenizer.advance_index();     
+   
+                                if (self.tokenizer.get_current_token() == "{"){
+                                    output += &self.format_terminal();
+                                    self.tokenizer.advance_index();
+
+                                    output += &self.compileStatements();
+
+                                    if (self.tokenizer.get_current_token() == "}"){
+                                        output += &self.format_terminal();
+                                        self.tokenizer.advance_index();   
+                                    }
+                                }
+                            }                    
+                        }
+                    }
+                }
+
+                
+            }
+        }
+
+
+        
+        output += "</ifStatement>\n";
+
+        return output;
+    }
+
+
+    fn compileWhile(&mut self) -> String{
+        let mut output = "".to_string();
+
+        output += "<whileStatement>\n";
+
+        if (self.tokenizer.get_current_token() == "while"){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            if (self.tokenizer.get_current_token() == "("){
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();   
+
+                output += &self.compileExpression();
+
+                if (self.tokenizer.get_current_token() == ")"){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index(); 
+
+                    if (self.tokenizer.get_current_token() == "{"){
+                        output += &self.format_terminal();
+                        self.tokenizer.advance_index(); 
+
+                        output += &self.compileStatements();
+
+                        if (self.tokenizer.get_current_token() == "}"){
+
+                            output += &self.format_terminal();
+                            self.tokenizer.advance_index(); 
+
+                        }
+
+
+                    }
+
+
+                }  
+            }
+
+        }
+        //
+        output += "</whileStatement>\n";
+        return output;
+    }
+
+
+    fn compileDo(&mut self) -> String{
+        let mut output = "".to_string();
+        //
+        output += "<doStatement>\n";
+
+        if (self.tokenizer.get_current_token() == "do"){
+
+            output += &self.format_terminal();
+            self.tokenizer.advance_index(); 
+
+            if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // (subroutineName | className | varName)
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();         
+
+                output += &self.compileSubroutineCall();
+
+                if (self.tokenizer.get_current_token() == ";"){
+                    output += &self.format_terminal();
+                    self.tokenizer.advance_index();           
+                }       
+            }
+
+
+        }
+
+        output += "</doStatement>\n";
+        return output;
+    }
+
+
+    fn compileReturn(&mut self) -> String{
+        let mut output = "".to_string();
+        //
+
+        output += "<returnStatement>\n";
+
+        if (self.tokenizer.get_current_token() == "return"){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            if (self.tokenizer.get_current_token() != ";"){
+                output += &self.compileExpression();
+            }
+            if (self.tokenizer.get_current_token() == ";"){
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();           
+            }     
+        }
+
+        output += "</returnStatement>\n";
+        return output;
+    }
+
+    // Grammar: term (op term)*
+    fn compileExpression(&mut self) -> String{
+        let mut output = "".to_string();
+        
+        output += "<expression>\n";
+
+        output += &self.compileTerm();
+
+        while (self.tokenizer.is_op() && self.tokenizer.get_current_token() != ","){ // ',' is handled by compileExpressionList
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            output += &self.compileTerm();
+        }
+
+        output += "</expression>\n";
+
+
+
+        return output;    
+    }
+
+    fn compileTerm(&mut self) -> String{
+        let mut output = "".to_string();
+        
+        output += "<term>\n";
+
+        if ((self.tokenizer.get_token_type() == TOKEN_TYPE::INT_CONST) | (self.tokenizer.get_token_type() == TOKEN_TYPE::STRING_CONST)){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+        }
+
+        else if (self.tokenizer.is_keyword_const()){
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+        } else if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varName | varName[expression] | subroutineCall
+            output += &self.format_terminal(); // consumes either varName or (subroutineName | className | varName) depending on which part of the grammar is being used
+            self.tokenizer.advance_index();   
+
+            if (self.tokenizer.get_current_token() == "["){ // varName[expression]
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();       
+
+                output += &self.compileExpression(); // WARNING: recursion    
+
+                output += &self.format_terminal(); // handle close bracket
+                self.tokenizer.advance_index();          
+
+            } else {
+                
+                output += &self.compileSubroutineCall();
+            }
+
+        } else if (self.tokenizer.is_unary_op()){ // unaryOp term
+
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            output += &self.compileTerm(); 
+
+        } else if (self.tokenizer.get_current_token() == "("){ // (expression)
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();   
+
+            output += &self.compileExpression();
+
+            output += &self.format_terminal(); // handle close parentheses
+            self.tokenizer.advance_index();   
+
+        }
+
+
+        output += "</term>\n";
+
+
+
+        return output; 
+
+
+    }
+
+
+
+    // this compilation function will handle the parentheses processing
+    fn compileExpressionList(&mut self) -> String{
+        let mut output = "".to_string();
+        
+        
+
+
+        if (self.tokenizer.get_current_token() == "("){ 
+            output += &self.format_terminal();
+            self.tokenizer.advance_index(); 
+        }
+
+        output += "<expressionList>\n";
+
+        if (self.tokenizer.get_current_token() != ")"){
+            output += &self.compileExpression();
+
+            while (&self.tokenizer.get_current_token() == ","){
+                output += &self.format_terminal();
+                self.tokenizer.advance_index(); 
+
+                output += &self.compileExpression();      
+            }
+        }
+
+        output += "</expressionList>\n";
+
+        output += &self.format_terminal();
+        self.tokenizer.advance_index(); 
+
+
+
+        
+
+        return output;
+    }
+
+
+    // assumes subroutineName | className | varName have already been consumed
+    fn compileSubroutineCall(&mut self) -> String{
+        let mut output = "".to_string();
+
+        if (self.tokenizer.get_current_token() == "("){ // subroutineName (expressionList)
+
+            output += &self.compileExpressionList();         
+
+            output += &self.format_terminal(); // handle close parentheses
+            self.tokenizer.advance_index(); 
+
+        } else if (self.tokenizer.get_current_token() == "."){ // (className|varName).subroutineName(expressionList)
+            output += &self.format_terminal();
+            self.tokenizer.advance_index();  
+
+            if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // subroutineName
+                output += &self.format_terminal();
+                self.tokenizer.advance_index();   
+
+
+                if (self.tokenizer.get_current_token() == "("){ // subroutineName (expressionList) 
+
+                    output += &self.compileExpressionList();         
+
+                }
+            } 
+
+        }
+
+
+        return output;
+
+    }
+}
