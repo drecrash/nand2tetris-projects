@@ -54,6 +54,7 @@ fn main() {
             .expect("File read error");
 
         let output_file = format!("{}.xml", file_path_root);
+        let vm_output_file = format!("{}.txt", file_path_root);
 
         file_contents = clean_file(file_contents);
 
@@ -67,6 +68,7 @@ fn main() {
         let mut compiler = CompilationEngine {
             file_contents: file_contents,
             output_file: output_file.to_string(),
+            vm_output_file: vm_output_file.to_string(),
             tokenizer: jack_tokenizer,
             symbol_table: SymbolTable::new()
         };

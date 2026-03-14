@@ -67,7 +67,7 @@ impl JackTokenizer {
         return tokens;
     }
 
-    pub fn get_current_token(&mut self) -> String{
+    pub fn get_current_token(&self) -> String{
         let tokens = &self.tokens;
 
         return tokens.get(self.current_token_index as usize)

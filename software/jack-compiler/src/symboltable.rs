@@ -2,11 +2,13 @@ use std::{collections::HashMap, hash::Hash, fmt};
 
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct Symbol {
-    type_: String,
-    kind: String,
-    id: i32
+    pub type_: String,
+    pub kind: String,
+    pub id: i32
 }
+
 
 pub struct SymbolTable {
     class_scope: HashMap<String, Symbol>,
@@ -26,15 +28,28 @@ pub struct SymbolTable {
 
 impl SymbolTable {
 
-    pub fn get_class_symbol(&mut self, name: String) -> &Symbol{
+    pub fn get_class_symbol(&self, name: String) -> &Symbol{
         return self.class_scope.get(&name)
             .expect("error");
     }
 
-    pub fn get_subroutine_symbol(&mut self, name: String) -> &Symbol{
+    pub fn get_subroutine_symbol(&self, name: String) -> &Symbol{
         return self.subroutine_scope.get(&name)
             .expect("error");
     }
+
+    pub fn get_subroutine_kinds(&self) -> HashMap<String, i32>{
+        return self.subroutine_kinds.clone();
+    }
+
+    pub fn get_class_symbol_table(&self) -> HashMap<String, Symbol>{
+        return self.class_scope.clone();
+    }
+
+    pub fn get_subroutine_symbol_table(&self) -> HashMap<String, Symbol>{
+        return self.subroutine_scope.clone();
+    }
+
 
 
     // class_level is a boolean toggle indicating if changes are being pushed to the class scope symbol table, or the subroutine level
