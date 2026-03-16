@@ -118,7 +118,7 @@ impl JackTokenizer {
 
     
     pub fn is_op(&mut self) -> bool{
-        let ops: Vec<String> = vec!["+" , "-" , "*" , "/" , "&" , "," , "<" , ">" , "="]
+        let ops: Vec<String> = vec!["+" , "-" , "*" , "/" , "&" , "," , "<" , ">" , "=", "|"]
             .into_iter()
             .map(String::from)
             .collect();
