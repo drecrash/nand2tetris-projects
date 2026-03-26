@@ -70,7 +70,11 @@ fn main() {
             output_file: output_file.to_string(),
             vm_output_file: vm_output_file.to_string(),
             tokenizer: jack_tokenizer,
-            symbol_table: SymbolTable::new()
+            symbol_table: SymbolTable::new(),
+
+            cur_class_name: String::new(),
+            if_counter: 0,
+            while_counter: 0
         };
 
         compiler.run_compiler();

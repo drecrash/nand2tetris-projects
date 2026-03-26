@@ -62,7 +62,7 @@ impl JackTokenizer {
             .map(|m| m.as_str().to_string())
             .collect();
 
-        //println!("{:?}", tokens);
+        println!("{:?}", tokens);
         self.tokens = tokens.clone();
         return tokens;
     }

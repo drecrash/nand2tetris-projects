@@ -32,7 +32,10 @@ pub struct CompilationEngine {
     pub vm_output_file: String,
     pub tokenizer: JackTokenizer,
     pub symbol_table: SymbolTable,
-    pub cur_class_name: String
+    pub cur_class_name: String,
+
+    pub if_counter: i32, // counters keep track of the labels used in the VM
+    pub while_counter: i32
     
 
 }
@@ -146,13 +149,16 @@ impl CompilationEngine {
         self.initializeSymbolTables();
         let mut output = self.CompileClass();
 
+        /*
         output = output.replace("<symbol>&", "<symbol>&amp;");
         output = output.replace("<symbol><", "<symbol>&lt;");
         output = output.replace("<symbol>>", "<symbol>&gt;");
         output = output.replace("<symbol>\"", "<symbol>&quot;");
+        */
         
 
-        self.writeToXMLOutput(&output);
+        //self.writeToXMLOutput(&output);
+        self.writeToVMOutput(&output);
         self.symbol_table.display_symbol_table(true);
         self.symbol_table.display_symbol_table(false);
     }
@@ -176,7 +182,7 @@ impl CompilationEngine {
             if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // should be className
 
                 class_name = self.tokenizer.get_current_token();
-                self.cur_class_name = class_name;
+                self.cur_class_name = class_name.clone();
 
                 output += &self.format_terminal();
 
@@ -191,11 +197,11 @@ impl CompilationEngine {
                     while (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // Could be classVarDec or subroutineDec
 
                         while ((self.tokenizer.get_current_token() == "static") | (self.tokenizer.get_current_token() == "field")){
-                            output += &self.compileClassVarDec();
+                            vm_output += &self.compileClassVarDec();
                         };
 
                         while ((self.tokenizer.get_current_token() == "constructor") | (self.tokenizer.get_current_token() == "function") | (self.tokenizer.get_current_token() == "method")){
-                            output += &self.compileSubroutine(class_name.clone());
+                            vm_output += &self.compileSubroutine(class_name.clone());
                         }
 
                         self.tokenizer.advance_index();
@@ -223,7 +229,7 @@ impl CompilationEngine {
 
         output += "</class>\n";
 
-        return output;
+        return vm_output;
     }
 
 
@@ -295,7 +301,7 @@ impl CompilationEngine {
         output += "</classVarDec>\n";
 
 
-        return output;
+        return vm_output;
 
     }
 
@@ -341,7 +347,7 @@ impl CompilationEngine {
 
                         output += "<parameterList>\n";
                         if ((self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER) | (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD)){ //'int', 'char', 'bool', or className
-                            output += &self.compileParameterList();
+                            vm_output += &self.compileParameterList();
 
                         }
                         output += "</parameterList>\n";
@@ -359,7 +365,7 @@ impl CompilationEngine {
                                 self.tokenizer.advance_index(); 
 
                                 while (self.tokenizer.get_current_token() == "var"){
-                                    output += &self.compileVarDec();
+                                    vm_output += &self.compileVarDec();
                                 }
 
                                 let subroutine_kinds = self.symbol_table.get_subroutine_kinds();
@@ -372,10 +378,10 @@ impl CompilationEngine {
 
                                 match (subroutine_kind.as_str()){
                                     "method"=>{
-                                        vm_output += "push argument 0\npop pointer 0";
+                                        vm_output += "push argument 0\npop pointer 0\n";
                                     },
                                     "constructor"=>{
-                                        vm_output += format!("push constant {}\ncall Memory.alloc 1\npop pointer 0", self.getFieldCount()).as_str();
+                                        vm_output += format!("push constant {}\ncall Memory.alloc 1\npop pointer 0\n", self.getFieldCount()).as_str();
                                     },
                                     _=>{
                                         // do nothing
@@ -383,7 +389,7 @@ impl CompilationEngine {
                                 }
                             
                                 if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){
-                                    output += &self.compileStatements();
+                                    vm_output += &self.compileStatements();
 
                                     if (self.tokenizer.get_token_type() == TOKEN_TYPE::SYMBOL){ // should be '}'
                                         output += &self.format_terminal();
@@ -408,7 +414,7 @@ impl CompilationEngine {
         output += "</subroutineDec>\n";
 
 
-        return output;
+        return vm_output;
 
     }
 
@@ -416,6 +422,7 @@ impl CompilationEngine {
 
     fn compileVarDec(&mut self) -> String{
         let mut output = "".to_string();
+        let mut vm_output = "".to_string();
 
         output += "<varDec>\n";
 
@@ -479,13 +486,14 @@ impl CompilationEngine {
 
         output += "</varDec>\n";
 
-        return output;
+        return vm_output;
     }
 
 
 
     fn compileParameterList(&mut self) -> String{
         let mut output = "".to_string();
+        let mut vm_output = "".to_string();
 
         let mut var_type = String::new();
         let mut var_name = String::new();
@@ -530,7 +538,7 @@ impl CompilationEngine {
         }
 
 
-        return output;
+        return vm_output;
 
 
 
@@ -539,6 +547,7 @@ impl CompilationEngine {
 
     fn compileStatements(&mut self) -> String{
         let mut output = "".to_string();
+        let mut vm_output = "".to_string();
 
         output += "<statements>\n";
 
@@ -547,19 +556,19 @@ impl CompilationEngine {
             
             match(self.tokenizer.get_current_token().as_str()){
                 "let" => {
-                    output += &self.compileLet();
+                    vm_output += &self.compileLet();
                 },
                 "if" => {
-                    output += &self.compileIf();
+                    vm_output += &self.compileIf();
                 },
                 "while" => {
-                    output += &self.compileWhile();
+                    vm_output += &self.compileWhile();
                 },
                 "do" => {
-                    output += &self.compileDo();
+                    vm_output += &self.compileDo();
                 },
                 "return" =>{
-                    output += &self.compileReturn();
+                    vm_output += &self.compileReturn();
                 }
                 _=>{
                     output += "";
@@ -571,7 +580,7 @@ impl CompilationEngine {
 
         output += "</statements>\n";
 
-        return output
+        return vm_output
     }
 
 
@@ -600,7 +609,7 @@ impl CompilationEngine {
 
         output += "<letStatement>\n";
 
-
+        let mut identifier = "".to_string();
 
         if (self.tokenizer.get_token_type() == TOKEN_TYPE::KEYWORD){ // let
             output += &self.format_terminal();
@@ -609,7 +618,9 @@ impl CompilationEngine {
             if (self.tokenizer.get_token_type() == TOKEN_TYPE::IDENTIFIER){ // varname
                 output += &self.format_terminal();
 
-                vm_output += format!("push {} \n", self.translate_identifier(self.tokenizer.get_current_token())).as_str();
+                identifier = self.translate_identifier(self.tokenizer.get_current_token());
+
+                vm_output += format!("push {} \n", identifier).as_str();
 
                 self.tokenizer.advance_index();
 
@@ -630,13 +641,15 @@ impl CompilationEngine {
                     output += &self.format_terminal();
                     self.tokenizer.advance_index();   
 
-                    output += &self.compileExpression();
+                    vm_output += &self.compileExpression();
 
                     if (self.tokenizer.get_current_token() == ";"){
                         output += &self.format_terminal();
                         self.tokenizer.advance_index();   
                     }
                 }
+
+                vm_output += format!("pop {} \n", identifier).as_str();
             }
 
         }
@@ -644,12 +657,13 @@ impl CompilationEngine {
 
         output += "</letStatement>\n";
 
-        return output;
+        return vm_output;
     }
 
 
     fn compileIf(&mut self) -> String{
         let mut output = "".to_string();
+        let mut vm_output = "".to_string();
         //
 
         output += "<ifStatement>\n";
@@ -662,7 +676,10 @@ impl CompilationEngine {
                 output += &self.format_terminal();
                 self.tokenizer.advance_index();
 
-                output += &self.compileExpression();
+                //output += &self.compileExpression();
+                vm_output += &self.compileExpression();
+
+                vm_output += format!("not\nif-goto L{}\n", self.if_counter).as_str();
 
                 if (self.tokenizer.get_current_token() == ")"){
                     output += &self.format_terminal();
@@ -670,13 +687,23 @@ impl CompilationEngine {
 
                     if (self.tokenizer.get_current_token() == "{"){
                         output += &self.format_terminal();
+                        vm_output+= &self.compileStatements();
+
+                        
                         self.tokenizer.advance_index();
 
-                        output += &self.compileStatements();
+                        vm_output += format!("goto L{}\nlabel L{}\n", self.if_counter + 1, self.if_counter).as_str();
+
+                        //output += &self.compileStatements();
+                        
 
                         if (self.tokenizer.get_current_token() == "}"){
+
+
                             output += &self.format_terminal();
-                            self.tokenizer.advance_index();     
+                            self.tokenizer.advance_index();   
+
+
 
 
                             if (self.tokenizer.get_current_token() == "else"){ // this part is optional
@@ -687,11 +714,14 @@ impl CompilationEngine {
                                     output += &self.format_terminal();
                                     self.tokenizer.advance_index();
 
-                                    output += &self.compileStatements();
+                                    vm_output += &self.compileStatements();
+                                    //output += &self.compileStatements();
 
                                     if (self.tokenizer.get_current_token() == "}"){
                                         output += &self.format_terminal();
                                         self.tokenizer.advance_index();   
+
+                                        
                                     }
                                 }
                             }                    
@@ -703,18 +733,23 @@ impl CompilationEngine {
             }
         }
 
+        vm_output += format!("label L{}\n", self.if_counter + 1).as_str();
 
+        self.if_counter = self.if_counter + 2;
         
         output += "</ifStatement>\n";
 
-        return output;
+        return vm_output;
     }
 
 
     fn compileWhile(&mut self) -> String{
         let mut output = "".to_string();
+        let mut vm_output = "".to_string();
 
         output += "<whileStatement>\n";
+
+        vm_output += format!("label W{}\n", self.while_counter).as_str();
 
         if (self.tokenizer.get_current_token() == "while"){
             output += &self.format_terminal();
@@ -724,7 +759,10 @@ impl CompilationEngine {
                 output += &self.format_terminal();
                 self.tokenizer.advance_index();   
 
-                output += &self.compileExpression();
+                vm_output += &self.compileExpression();
+
+                vm_output += format!("not\nif-goto W{}\n", self.while_counter+1).as_str();
+
 
                 if (self.tokenizer.get_current_token() == ")"){
                     output += &self.format_terminal();
@@ -734,7 +772,9 @@ impl CompilationEngine {
                         output += &self.format_terminal();
                         self.tokenizer.advance_index(); 
 
-                        output += &self.compileStatements();
+                        vm_output += &self.compileStatements();
+
+                        vm_output += format!("goto W{}\nlabel W{}\n", self.while_counter, self.while_counter + 1).as_str();
 
                         if (self.tokenizer.get_current_token() == "}"){
 
@@ -752,13 +792,16 @@ impl CompilationEngine {
 
         }
         //
+        self.while_counter += 1;
         output += "</whileStatement>\n";
-        return output;
+
+        return vm_output;
     }
 
 
     fn compileDo(&mut self) -> String{
         let mut output = "".to_string();
+        let mut vm_output = "".to_string();
         //
         output += "<doStatement>\n";
 
@@ -773,7 +816,8 @@ impl CompilationEngine {
                 let header = self.tokenizer.get_current_token();
                 self.tokenizer.advance_index();         
 
-                output += &self.compileSubroutineCall(header);
+                
+                vm_output += &self.compileSubroutineCall(header);
 
                 if (self.tokenizer.get_current_token() == ";"){
                     output += &self.format_terminal();
@@ -785,12 +829,13 @@ impl CompilationEngine {
         }
 
         output += "</doStatement>\n";
-        return output;
+        return vm_output;
     }
 
 
     fn compileReturn(&mut self) -> String{
         let mut output = "".to_string();
+        let mut vm_output = "".to_string();
         //
 
         output += "<returnStatement>\n";
@@ -800,16 +845,18 @@ impl CompilationEngine {
             self.tokenizer.advance_index();   
 
             if (self.tokenizer.get_current_token() != ";"){
-                output += &self.compileExpression();
+                vm_output += &self.compileExpression();
             }
             if (self.tokenizer.get_current_token() == ";"){
                 output += &self.format_terminal();
                 self.tokenizer.advance_index();           
             }     
+
+            vm_output += "pop temp 0\nreturn\n";
         }
 
         output += "</returnStatement>\n";
-        return output;
+        return vm_output;
     }
 
     // Grammar: term (op term)*
@@ -817,7 +864,6 @@ impl CompilationEngine {
         let mut output = "".to_string();
         let mut vm_output = "".to_string();
 
-        let mut tmp_output = "".to_string();
 
         output += "<expression>\n";
 
@@ -898,10 +944,11 @@ impl CompilationEngine {
 
         else if (self.tokenizer.get_token_type() == TOKEN_TYPE::STRING_CONST){
             let str_const = self.tokenizer.get_current_token();
-            vm_output += format!("push constant {}\ncall String.new 1", str_const.len()).as_str();
+            
+            vm_output += format!("push constant {}\ncall String.new 1\n", str_const.len()).as_str();
 
             for char in str_const.chars(){
-                vm_output += format!("push constant {}\ncall String.append 2", char as u32).as_str();
+                vm_output += format!("push constant {}\ncall String.appendChar 2\n", char as u32).as_str();
 
             }
 
@@ -936,7 +983,10 @@ impl CompilationEngine {
             let consumed_value = &self.tokenizer.get_current_token();
             output += &self.format_terminal(); // consumes either varName or (subroutineName | className | varName) depending on which part of the grammar is being used
 
-            vm_output += format!("push {} \n", self.translate_identifier(self.tokenizer.get_current_token())).as_str();
+            if (self.translate_identifier(self.tokenizer.get_current_token()) != ""){
+                vm_output += format!("push {} \n", self.translate_identifier(self.tokenizer.get_current_token())).as_str();
+            }
+            
 
             self.tokenizer.advance_index();   
 
@@ -955,6 +1005,7 @@ impl CompilationEngine {
             } else {
                 
                 //output += &self.compileSubroutineCall(consumed_value.to_string());
+                
                 vm_output += &self.compileSubroutineCall(consumed_value.to_string());
             }
 
@@ -979,7 +1030,7 @@ impl CompilationEngine {
             output += &self.format_terminal();
             self.tokenizer.advance_index();   
 
-            output += &self.compileExpression();
+            vm_output += &self.compileExpression();
 
             output += &self.format_terminal(); // handle close parentheses
             self.tokenizer.advance_index();   
@@ -1007,6 +1058,9 @@ impl CompilationEngine {
 
         let mut total_expressions = 0;
 
+        let token = self.tokenizer.get_current_token();
+        print!("{token}\n");
+
         if (self.tokenizer.get_current_token() == "("){ 
             output += &self.format_terminal();
             self.tokenizer.advance_index(); 
@@ -1014,8 +1068,10 @@ impl CompilationEngine {
 
         output += "<expressionList>\n";
 
+        
         if (self.tokenizer.get_current_token() != ")"){
-            output += &self.compileExpression();
+
+            //output += &self.compileExpression();
 
             vm_output += &self.compileExpression();  
 
@@ -1030,13 +1086,17 @@ impl CompilationEngine {
                 total_expressions += 1;    
             }
         }
+        else{
+            print!("aaa");
+        }
 
         output += "</expressionList>\n";
 
         output += &self.format_terminal();
         self.tokenizer.advance_index(); 
+        self.tokenizer.advance_index(); 
 
-
+        print!("total expressions: {total_expressions}\n");
 
         
 
@@ -1067,7 +1127,7 @@ impl CompilationEngine {
 
         } else if (self.tokenizer.get_current_token() == "."){ // (className|varName).subroutineName(expressionList)
 
-            let mut class_name = "".to_string();
+            let mut class_name = header.to_string();
             let mut is_varname = false;
             // Check if it is varName or className
 
@@ -1080,7 +1140,7 @@ impl CompilationEngine {
             }
             else if (self.symbol_table.get_subroutine_symbol_table().contains_key(&header)){
                 class_name = (self.symbol_table.get_subroutine_symbol(header.clone()).type_).clone();
-                vm_output += format!("push {}\n", self.translate_identifier(header)).as_str();
+                vm_output += format!("push {} \n", self.translate_identifier(header)).as_str();
                 is_varname = true;
             }
 
@@ -1097,14 +1157,15 @@ impl CompilationEngine {
 
                 if (self.tokenizer.get_current_token() == "("){ // subroutineName (expressionList) 
 
-                    //output += &self.compileExpressionList().0;         
-                    vm_output += &self.compileExpressionList().0;  
+                    //output += &self.compileExpressionList().0;  
+                    let (expression_list, count) =        self.compileExpressionList();
+                    vm_output += &expression_list;  
 
-                    let mut nArgs = self.compileExpressionList().1;
+                    let mut nArgs = count;
                     if (is_varname){
                         nArgs = (nArgs + 1); // pass in object pointer
                     }
-                    vm_output += format!("call {}.{} {}", class_name, subroutine_name, nArgs).as_str();
+                    vm_output += format!("call {}.{} {}\n", class_name, subroutine_name, nArgs).as_str();
 
                 }
             } 
